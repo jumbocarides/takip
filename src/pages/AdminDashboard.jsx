@@ -12,27 +12,6 @@ import { tr } from 'date-fns/locale'
 import { useAuthStore } from '../stores/authStore'
 import toast from 'react-hot-toast'
 
-// Mock data - replace with actual API calls
-const mockPersonnel = [
-  { id: '1', name: 'Ahmet Yılmaz', position: 'Garson', location: 'Çengelköy', status: 'active' },
-  { id: '2', name: 'Ayşe Demir', position: 'Komi', location: 'Çengelköy', status: 'active' },
-  { id: '3', name: 'Mehmet Kaya', position: 'Aşçı', location: 'Kadıköy', status: 'active' },
-  { id: '4', name: 'Fatma Öz', position: 'Kasa', location: 'Beşiktaş', status: 'active' },
-]
-
-const mockAttendance = [
-  { id: '1', personnelId: '1', name: 'Ahmet Yılmaz', date: '2024-01-15', checkIn: '09:00', checkOut: '18:00', hours: 9, location: 'Çengelköy' },
-  { id: '2', personnelId: '2', name: 'Ayşe Demir', date: '2024-01-15', checkIn: '08:30', checkOut: '17:30', hours: 9, location: 'Çengelköy' },
-  { id: '3', personnelId: '3', name: 'Mehmet Kaya', date: '2024-01-15', checkIn: '10:00', checkOut: '19:00', hours: 9, location: 'Kadıköy' },
-  { id: '4', personnelId: '4', name: 'Fatma Öz', date: '2024-01-15', checkIn: '09:15', checkOut: null, hours: 0, location: 'Beşiktaş' },
-]
-
-const mockLocations = [
-  { id: 'cengelkoy', name: 'Çengelköy Şubesi', address: 'Çengelköy, İstanbul', activePersonnel: 12 },
-  { id: 'kadikoy', name: 'Kadıköy Şubesi', address: 'Kadıköy, İstanbul', activePersonnel: 8 },
-  { id: 'besiktas', name: 'Beşiktaş Şubesi', address: 'Beşiktaş, İstanbul', activePersonnel: 10 },
-]
-
 const AdminDashboard = ({ section = 'dashboard' }) => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -43,6 +22,40 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
   const [locationFilter, setLocationFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
+  
+  // API Data States
+  const [dashboardData, setDashboardData] = useState(null)
+  const [personnel, setPersonnel] = useState([])
+  const [attendance, setAttendance] = useState([])
+  const [locations, setLocations] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch dashboard data from API
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/.netlify/functions/get-dashboard-stats')
+      const data = await response.json()
+      
+      if (data.success) {
+        setDashboardData(data.stats)
+        setPersonnel(data.personnel)
+        setAttendance(data.todayAttendance)
+        setLocations(data.locations)
+      } else {
+        toast.error('Veriler yüklenemedi')
+      }
+    } catch (error) {
+      console.error('Dashboard data error:', error)
+      toast.error('Bağlantı hatası')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Update section based on prop or URL
   useEffect(() => {
@@ -62,12 +75,12 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
     { id: 'settings', label: 'Ayarlar', icon: Settings },
   ]
 
-  const stats = [
-    { label: 'Toplam Personel', value: '24', change: '+12%', icon: Users, color: 'blue' },
-    { label: 'Aktif Lokasyon', value: '3', change: '0%', icon: MapPin, color: 'green' },
-    { label: 'Bugün Giriş', value: '18', change: '+5%', icon: Activity, color: 'purple' },
-    { label: 'Ortalama Çalışma', value: '8.5 saat', change: '-2%', icon: Clock, color: 'orange' },
-  ]
+  const stats = dashboardData ? [
+    { label: 'Toplam Personel', value: dashboardData.totalPersonnel.toString(), change: '+12%', icon: Users, color: 'blue' },
+    { label: 'Aktif Lokasyon', value: dashboardData.totalLocations.toString(), change: '0%', icon: MapPin, color: 'green' },
+    { label: 'Bugün Giriş', value: dashboardData.todayCheckIns.toString(), change: '+5%', icon: Activity, color: 'purple' },
+    { label: 'Ortalama Çalışma', value: `${dashboardData.avgWorkHours} saat`, change: '-2%', icon: Clock, color: 'orange' },
+  ] : []
 
   const handleSectionChange = (sectionId) => {
     setActiveSection(sectionId)
@@ -117,30 +130,40 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
             </button>
           </div>
           <div className="space-y-3">
-            {mockAttendance.slice(0, 5).map((record) => (
-              <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-900">{record.name}</p>
-                  <p className="text-sm text-gray-600">{record.location}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm">
-                    <span className="text-green-600">{record.checkIn}</span>
-                    {record.checkOut && (
-                      <>
-                        {' - '}
-                        <span className="text-red-600">{record.checkOut}</span>
-                      </>
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
+            ) : attendance.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">Bugün henüz giriş yapılmamış</div>
+            ) : (
+              attendance.slice(0, 5).map((record) => (
+                <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">{record.personnel_name}</p>
+                    <p className="text-sm text-gray-600">{record.location_name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm">
+                      <span className="text-green-600">
+                        {format(new Date(record.check_in_time), 'HH:mm')}
+                      </span>
+                      {record.check_out_time && (
+                        <>
+                          {' - '}
+                          <span className="text-red-600">
+                            {format(new Date(record.check_out_time), 'HH:mm')}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                    {record.check_out_time ? (
+                      <p className="text-xs text-gray-500">{record.work_hours?.toFixed(1)} saat</p>
+                    ) : (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Çalışıyor</span>
                     )}
-                  </p>
-                  {record.checkOut ? (
-                    <p className="text-xs text-gray-500">{record.hours} saat</p>
-                  ) : (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Çalışıyor</span>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -216,10 +239,11 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
             className="input-field w-full md:w-48"
+            disabled={loading}
           >
             <option value="all">Tüm Lokasyonlar</option>
-            {mockLocations.map(loc => (
-              <option key={loc.id} value={loc.id}>{loc.name}</option>
+            {locations.map(loc => (
+              <option key={loc.id} value={loc.location_code}>{loc.name}</option>
             ))}
           </select>
         </div>
@@ -249,50 +273,69 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {mockPersonnel
-                .filter(p => searchTerm ? p.name.toLowerCase().includes(searchTerm.toLowerCase()) : true)
-                .filter(p => locationFilter === 'all' || p.location.toLowerCase() === locationFilter)
-                .map((person) => (
-                  <tr key={person.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <span className="text-primary-700 font-semibold">
-                            {person.name.split(' ').map(n => n[0]).join('')}
-                          </span>
+              {loading ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                    Yükleniyor...
+                  </td>
+                </tr>
+              ) : personnel.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                    Henüz personel eklenmemiş
+                  </td>
+                </tr>
+              ) : (
+                personnel
+                  .filter(p => searchTerm ? 
+                    (p.name + ' ' + p.surname).toLowerCase().includes(searchTerm.toLowerCase()) : true)
+                  .filter(p => locationFilter === 'all' || p.location_code === locationFilter)
+                  .map((person) => (
+                    <tr key={person.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                            <span className="text-primary-700 font-semibold">
+                              {person.name[0]}{person.surname[0]}
+                            </span>
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-900">
+                              {person.name} {person.surname}
+                            </p>
+                            <p className="text-sm text-gray-500">ID: {person.personnel_no}</p>
+                          </div>
                         </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">{person.name}</p>
-                          <p className="text-sm text-gray-500">ID: {person.id}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">{person.position || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">{person.location_name || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          person.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {person.is_active ? 'Aktif' : 'Pasif'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end gap-2">
+                          <button className="text-primary-600 hover:text-primary-900">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button className="text-blue-600 hover:text-blue-900">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button className="text-red-600 hover:text-red-900">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">{person.position}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">{person.location}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        Aktif
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <button className="text-primary-600 hover:text-primary-900">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button className="text-blue-600 hover:text-blue-900">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button className="text-red-600 hover:text-red-900">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  ))
+              )}
             </tbody>
           </table>
         </div>
@@ -310,22 +353,36 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
         return (
           <div className="card">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Lokasyon Yönetimi</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockLocations.map((location) => (
-                <div key={location.id} className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="font-semibold text-lg mb-2">{location.name}</h3>
-                  <p className="text-gray-600 text-sm mb-4">{location.address}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">
-                      <span className="font-medium">{location.activePersonnel}</span> Personel
-                    </span>
-                    <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                      Detaylar →
-                    </button>
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {locations.map((location) => (
+                  <div key={location.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-lg">{location.name}</h3>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        {location.location_code}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-4">{location.address}</p>
+                    <div className="flex items-center justify-between border-t pt-3">
+                      <div>
+                        <p className="text-xs text-gray-500">Toplam Personel</p>
+                        <p className="text-lg font-semibold text-gray-900">{location.personnel_count}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Bugün Aktif</p>
+                        <p className="text-lg font-semibold text-green-600">{location.active_today || 0}</p>
+                      </div>
+                      <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                        Detaylar →
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )
       case 'reports':
