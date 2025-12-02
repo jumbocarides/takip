@@ -11,6 +11,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-f
 import { tr } from 'date-fns/locale'
 import { useAuthStore } from '../stores/authStore'
 import toast from 'react-hot-toast'
+import PersonnelAddModal from '../components/PersonnelAddModal'
 
 const AdminDashboard = ({ section = 'dashboard' }) => {
   const navigate = useNavigate()
@@ -85,6 +86,44 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
   const handleSectionChange = (sectionId) => {
     setActiveSection(sectionId)
     navigate(`/admin/${sectionId === 'dashboard' ? 'dashboard' : sectionId}`)
+  }
+
+  // Excel Export
+  const handleExcelExport = async () => {
+    try {
+      toast.loading('Excel hazırlanıyor...')
+      
+      const response = await fetch('/.netlify/functions/personnel-export')
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        // CSV formatına çevir
+        const headers = Object.keys(result.data[0])
+        const csvContent = [
+          headers.join(','),
+          ...result.data.map(row => 
+            headers.map(header => `"${row[header] || ''}"`).join(',')
+          )
+        ].join('\n')
+        
+        // İndir
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `personel_listesi_${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+        
+        toast.dismiss()
+        toast.success(`${result.total} personel Excel'e aktarıldı!`)
+      } else {
+        toast.dismiss()
+        toast.error('Excel oluşturulamadı')
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.dismiss()
+      toast.error('Bir hata oluştu')
+    }
   }
 
   const renderDashboard = () => (
@@ -206,7 +245,11 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Personel Yönetimi</h2>
         <div className="flex gap-3">
-          <button className="btn-secondary flex items-center gap-2">
+          <button 
+            onClick={handleExcelExport}
+            className="btn-secondary flex items-center gap-2"
+            disabled={loading}
+          >
             <Download className="w-4 h-4" />
             Excel İndir
           </button>
@@ -478,6 +521,14 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
           {renderContent()}
         </div>
       </main>
+
+      {/* Personel Ekle Modal */}
+      <PersonnelAddModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSuccess={fetchDashboardData}
+        locations={locations}
+      />
     </div>
   )
 }
