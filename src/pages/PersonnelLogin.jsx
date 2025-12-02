@@ -25,27 +25,37 @@ const PersonnelLogin = () => {
     return () => clearInterval(timer)
   }, [])
 
-  const handleScan = async (result) => {
-    if (!result || !result[0]?.rawValue) return
+  const handleScan = async (scanResult) => {
+    if (!scanResult || !scanResult[0]?.rawValue) return
+
+    // Önce login olmuş mu kontrol et
+    const storedPersonnelId = sessionStorage.getItem('personnelId')
+    if (!storedPersonnelId) {
+      toast.error('Önce giriş yapmalısınız!')
+      setScanning(false)
+      setManualLogin(true)
+      return
+    }
 
     try {
       setLoading(true)
-      const qrData = JSON.parse(result[0].rawValue)
+      const qrData = JSON.parse(scanResult[0].rawValue)
       
       // Check if QR code is expired
       if (qrData.expiresAt < Date.now()) {
         toast.error('QR kod süresi dolmuş, lütfen yenilenmesini bekleyin')
+        setLoading(false)
         return
       }
 
-      // Process check-in/out
-      const response = await fetch('/.netlify/functions/attendance-quick-check', {
+      // Process check-in/out with REAL DATABASE
+      const response = await fetch('/.netlify/functions/db-attendance-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           qrCode: qrData.code,
           locationId: qrData.locationId,
-          personnelId: personnelId || 'auto', // Auto-detect from session
+          personnelId: storedPersonnelId,
         })
       })
 
@@ -53,19 +63,30 @@ const PersonnelLogin = () => {
       
       if (result.success) {
         const actionType = result.action === 'check-in' ? 'Giriş' : 'Çıkış'
-        toast.success(`${actionType} başarılı!`)
+        const personnelName = result.personnel?.name || ''
+        
+        toast.success(`${actionType} başarılı! ${personnelName}`, { duration: 4000 })
+        
         setLastAction({
           type: result.action,
           time: new Date().toISOString(),
-          location: qrData.locationId
+          location: qrData.locationId,
+          personnelName: personnelName,
+          workHours: result.attendance?.work_hours
         })
+        
         setScanning(false)
+        
+        // 3 saniye sonra ekranı temizle
+        setTimeout(() => {
+          setLastAction(null)
+        }, 10000)
       } else {
-        toast.error(result.message || 'İşlem başarısız')
+        toast.error(result.error || 'İşlem başarısız')
       }
     } catch (error) {
       console.error('QR okuma hatası:', error)
-      toast.error('QR kod okunamadı')
+      toast.error('QR kod okunamadı: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -82,26 +103,37 @@ const PersonnelLogin = () => {
     setLoading(true)
     
     try {
-      // Simulate login - replace with actual API
-      const response = await fetch('/.netlify/functions/personnel-login', {
+      // REAL DATABASE LOGIN
+      const response = await fetch('/.netlify/functions/db-auth-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ personnelId, password })
+        body: JSON.stringify({ 
+          email: personnelId, // personnelNo olarak kullanılacak
+          password: password,
+          role: 'personnel'
+        })
       })
 
       const result = await response.json()
       
-      if (result.success) {
-        toast.success('Giriş başarılı!')
+      if (result.success && result.user) {
+        toast.success(`Hoş geldiniz ${result.user.name}!`)
+        
+        // Store personnel session
+        sessionStorage.setItem('personnelId', result.user.id)
+        sessionStorage.setItem('personnelNo', result.user.personnel_no)
+        sessionStorage.setItem('personnelName', result.user.name)
+        
         setManualLogin(false)
         setScanning(true)
-        // Store personnel session
-        sessionStorage.setItem('personnelId', personnelId)
+        setPersonnelId('')
+        setPassword('')
       } else {
-        toast.error('Giriş bilgileri hatalı')
+        toast.error('Personel no veya şifre hatalı')
       }
     } catch (error) {
-      toast.error('Giriş yapılamadı')
+      console.error('Login error:', error)
+      toast.error('Giriş yapılamadı: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -137,23 +169,31 @@ const PersonnelLogin = () => {
               className={`px-6 py-4 ${
                 lastAction.type === 'check-in' 
                   ? 'bg-green-50 border-b-2 border-green-200' 
-                  : 'bg-red-50 border-b-2 border-red-200'
+                  : 'bg-blue-50 border-b-2 border-blue-200'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {lastAction.type === 'check-in' ? (
-                    <CheckCircle className="w-6 h-6 text-green-600" />
+                    <CheckCircle className="w-8 h-8 text-green-600" />
                   ) : (
-                    <XCircle className="w-6 h-6 text-red-600" />
+                    <CheckCircle className="w-8 h-8 text-blue-600" />
                   )}
                   <div>
-                    <p className="font-semibold text-gray-800">
-                      Son İşlem: {lastAction.type === 'check-in' ? 'Giriş' : 'Çıkış'}
+                    <p className="font-bold text-lg text-gray-800">
+                      {lastAction.type === 'check-in' ? '✓ Giriş Yapıldı' : '✓ Çıkış Yapıldı'}
+                    </p>
+                    <p className="text-sm text-gray-700 font-medium">
+                      {lastAction.personnelName}
                     </p>
                     <p className="text-sm text-gray-600">
                       {format(new Date(lastAction.time), 'HH:mm:ss')} - {lastAction.location}
                     </p>
+                    {lastAction.type === 'check-out' && lastAction.workHours && (
+                      <p className="text-sm font-semibold text-green-700 mt-1">
+                        Çalışma Süresi: {lastAction.workHours.toFixed(1)} saat
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
