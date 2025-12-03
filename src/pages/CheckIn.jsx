@@ -152,11 +152,22 @@ const CheckIn = () => {
     setLoading(true)
 
     try {
-      // 🔒 GÜVENLİK: QR kod zorunlu kontrolü
+      // 🔒 GÜVENLİK: QR kod uyarısı (ama engelleme YOK!)
       if (!locationId) {
-        toast.error('QR kod bulunamadı! Lütfen QR kodu okutun.')
-        setLoading(false)
-        return
+        toast((t) => (
+          <div>
+            <p className="font-bold">⚠️ QR Kodu Okutulmadı!</p>
+            <p className="text-sm">Güvenlik için QR kod okutmanız önerilir.</p>
+            <button 
+              onClick={() => {
+                toast.dismiss(t.id)
+              }}
+              className="mt-2 text-xs bg-orange-500 text-white px-3 py-1 rounded"
+            >
+              Anladım, devam et
+            </button>
+          </div>
+        ), { duration: 3000 })
       }
 
       const response = await fetch('/.netlify/functions/db-attendance-check', {
@@ -164,9 +175,9 @@ const CheckIn = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           personnelId: personnelData.id,
-          locationId: locationId,
+          locationId: locationId || 'manual',
           action: action,
-          qrCode: `${locationId}-${Date.now()}`,
+          qrCode: locationId ? `${locationId}-${Date.now()}` : 'manual-entry',
           deviceId: deviceId,        // 🔒 Cihaz kimliği
           deviceName: deviceName     // 📱 Cihaz adı
         })

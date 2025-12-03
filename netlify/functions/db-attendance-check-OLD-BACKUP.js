@@ -1,4 +1,4 @@
-// Real Database Attendance Check with SECURITY
+// Real Database Attendance Check-in/Check-out
 import pg from 'pg'
 const { Pool } = pg
 
@@ -32,39 +32,20 @@ export async function handler(event, context) {
   }
 
   try {
-    const body = JSON.parse(event.body)
-    const { qrCode, personnelId, locationId, action, deviceId, deviceName } = body
-
-    // ========== GÜVENLİK UYARI: QR KOD VE CİHAZ ==========
-    // QR ve device yoksa uyar ama engelleme (test için)
-    const securityWarnings = []
-    
-    if (!qrCode || qrCode === 'manual-entry') {
-      securityWarnings.push('QR kod okutulmadı - Manuel giriş')
-    }
-    
-    if (!deviceId) {
-      securityWarnings.push('Cihaz kimliği alınamadı')
-    }
-
-    // Temel validasyon
-    if (!personnelId || !locationId || !action) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ 
-          success: false, 
-          error: 'Eksik bilgi: personnelId, locationId ve action gerekli' 
-        })
-      }
-    }
+    const { qrCode, personnelId, locationId, action } = JSON.parse(event.body)
     
     const client = await pool.connect()
     
     try {
+      // Start transaction
       await client.query('BEGIN')
       
-      // Get location ID from database
+      // 1. Simple validation - QR code is just for tracking now
+      if (!personnelId || !locationId) {
+        throw new Error('Eksik bilgi')
+      }
+      
+      // Get location ID
       const locationQuery = await client.query(
         'SELECT id FROM locations WHERE location_code = $1',
         [locationId]
@@ -76,7 +57,7 @@ export async function handler(event, context) {
       
       const locationDbId = locationQuery.rows[0].id
       
-      // Check if personnel has open attendance
+      // 2. Check if personnel has open attendance
       const openAttendanceQuery = await client.query(
         `SELECT * FROM attendance 
          WHERE personnel_id = $1 
@@ -92,40 +73,37 @@ export async function handler(event, context) {
       let workHours = 0
       let earlyLeaveWarning = null
       
-      // ========== CHECK-OUT ==========
+      // Force action based on parameter
       if (action === 'check-out' && hasOpenAttendance) {
+        // Check-out operation
         const attendance = openAttendanceQuery.rows[0]
         
-        // Calculate work hours
+        // Calculate work hours for response
         const checkOutTime = new Date()
         const checkInTime = new Date(attendance.check_in_time)
-        workHours = (checkOutTime - checkInTime) / (1000 * 60 * 60)
+        workHours = (checkOutTime - checkInTime) / (1000 * 60 * 60) // Convert to hours
         
-        // Erken çıkma kontrolü
+        // Erken çıkma kontrolü (sadece uyarı, engelleme yok)
         if (workHours < 8) {
           const remainingHours = 8 - workHours
           earlyLeaveWarning = `⚠️ Standart mesai süresini (8 saat) doldurmadınız. Kalan: ${remainingHours.toFixed(1)} saat. Erken çıkış cezası uygulanacaktır.`
         }
         
-        // Update attendance - Trigger otomatik hesaplama yapacak
+        // Update attendance record - Trigger otomatik hesaplama yapacak
         const updateQuery = await client.query(
           `UPDATE attendance 
            SET 
              check_out_time = NOW(), 
              check_out_method = 'qr',
-             device_id = $1,
-             device_name = $2,
-             qr_token = $3,
-             is_qr_verified = true,
              updated_at = NOW()
-           WHERE id = $4
+           WHERE id = $1
            RETURNING *`,
-          [deviceId, deviceName, qrCode, attendance.id]
+          [attendance.id]
         )
         
         attendanceRecord = updateQuery.rows[0]
         
-        // Erken çıkma notification
+        // Eğer erken çıkma varsa, notification ekle
         if (earlyLeaveWarning) {
           await client.query(
             `INSERT INTO notifications (
@@ -135,19 +113,24 @@ export async function handler(event, context) {
               message, 
               type
             ) VALUES ($1, 'personnel', $2, $3, 'warning')`,
-            [personnelId, 'Erken Çıkış Uyarısı', earlyLeaveWarning]
+            [
+              personnelId,
+              'Erken Çıkış Uyarısı',
+              earlyLeaveWarning
+            ]
           )
         }
         
-        // Log
+        // Log the action
         await client.query(
           'INSERT INTO audit_logs (personnel_id, action, table_name, record_id) VALUES ($1, $2, $3, $4)',
           [personnelId, 'check_out', 'attendance', attendance.id]
         )
         
-      // ========== CHECK-IN ==========
       } else if (action === 'check-in' && !hasOpenAttendance) {
-        // Get work schedule
+        // Check-in operation
+        
+        // Get work schedule if exists
         const scheduleQuery = await client.query(
           'SELECT * FROM work_schedules WHERE personnel_id = $1 AND date = CURRENT_DATE',
           [personnelId]
@@ -161,14 +144,14 @@ export async function handler(event, context) {
           const [hours, minutes] = schedule.shift_start.split(':')
           scheduledStart.setHours(hours, minutes, 0)
           
-          // Check if late (15+ minutes)
+          // Check if late (more than 15 minutes)
           const diffMinutes = (now - scheduledStart) / (1000 * 60)
           if (diffMinutes > 15) {
             status = 'late'
           }
         }
         
-        // Create attendance record with DEVICE INFO
+        // Create new attendance record
         const insertQuery = await client.query(
           `INSERT INTO attendance (
             personnel_id, 
@@ -176,21 +159,14 @@ export async function handler(event, context) {
             check_in_time, 
             check_in_method,
             status,
-            device_id,
-            device_name,
-            qr_token,
-            is_qr_verified,
             ip_address,
             device_info
-          ) VALUES ($1, $2, NOW(), 'qr', $3, $4, $5, $6, true, $7, $8)
+          ) VALUES ($1, $2, NOW(), 'qr', $3, $4, $5)
           RETURNING *`,
           [
             personnelId, 
             locationDbId,
             status,
-            deviceId,
-            deviceName,
-            qrCode,
             event.headers['x-forwarded-for'] || event.headers['client-ip'],
             event.headers['user-agent']
           ]
@@ -198,12 +174,13 @@ export async function handler(event, context) {
         
         attendanceRecord = insertQuery.rows[0]
         
-        // Log
+        // Log the action
         await client.query(
           'INSERT INTO audit_logs (personnel_id, action, table_name, record_id) VALUES ($1, $2, $3, $4)',
           [personnelId, 'check_in', 'attendance', attendanceRecord.id]
         )
       } else {
+        // Invalid action or state
         throw new Error(
           action === 'check-in' && hasOpenAttendance 
             ? 'Zaten açık bir giriş kaydınız var' 
@@ -211,7 +188,7 @@ export async function handler(event, context) {
         )
       }
       
-      // Get personnel info
+      // 4. Get personnel info for response
       const personnelQuery = await client.query(
         'SELECT name, surname, position FROM personnel WHERE id = $1',
         [personnelId]
@@ -219,7 +196,7 @@ export async function handler(event, context) {
       
       const personnel = personnelQuery.rows[0]
       
-      // Create success notification
+      // 5. Create notification
       await client.query(
         `INSERT INTO notifications (
           recipient_id, 
@@ -237,7 +214,7 @@ export async function handler(event, context) {
         ]
       )
       
-      // Commit
+      // Commit transaction
       await client.query('COMMIT')
       client.release()
       
@@ -251,27 +228,138 @@ export async function handler(event, context) {
           personnel,
           workHours: workHours.toFixed(2),
           message: `${action === 'check-in' ? 'Giriş' : 'Çıkış'} başarıyla kaydedildi`,
-          warning: earlyLeaveWarning,
-          securityWarnings: securityWarnings.length > 0 ? securityWarnings : null,
-          deviceVerified: deviceId ? true : false
+          warning: earlyLeaveWarning // Erken çıkış uyarısı varsa
         })
       }
       
-    } catch (error) {
-      await client.query('ROLLBACK')
-      client.release()
-      throw error
     }
+    
+    // Log the action
+    await client.query(
+      'INSERT INTO audit_logs (personnel_id, action, table_name, record_id) VALUES ($1, $2, $3, $4)',
+      [personnelId, 'check_out', 'attendance', attendance.id]
+    )
+    
+  } else if (action === 'check-in' && !hasOpenAttendance) {
+    // Check-in operation
+    
+    // Get work schedule if exists
+    const scheduleQuery = await client.query(
+      'SELECT * FROM work_schedules WHERE personnel_id = $1 AND date = CURRENT_DATE',
+      [personnelId]
+    )
+    
+    let status = 'present'
+    if (scheduleQuery.rows.length > 0) {
+      const schedule = scheduleQuery.rows[0]
+      const now = new Date()
+      const scheduledStart = new Date()
+      const [hours, minutes] = schedule.shift_start.split(':')
+      scheduledStart.setHours(hours, minutes, 0)
+      
+      // Check if late (more than 15 minutes)
+      const diffMinutes = (now - scheduledStart) / (1000 * 60)
+      if (diffMinutes > 15) {
+        status = 'late'
+      }
+    }
+    
+    // Create new attendance record
+    const insertQuery = await client.query(
+      `INSERT INTO attendance (
+        personnel_id, 
+        location_id, 
+        check_in_time, 
+        check_in_method,
+        status,
+        ip_address,
+        device_info
+      ) VALUES ($1, $2, NOW(), 'qr', $3, $4, $5)
+      RETURNING *`,
+      [
+        personnelId, 
+        locationDbId,
+        status,
+        event.headers['x-forwarded-for'] || event.headers['client-ip'],
+        event.headers['user-agent']
+      ]
+    )
+    
+    attendanceRecord = insertQuery.rows[0]
+    
+    // Log the action
+    await client.query(
+      'INSERT INTO audit_logs (personnel_id, action, table_name, record_id) VALUES ($1, $2, $3, $4)',
+      [personnelId, 'check_in', 'attendance', attendanceRecord.id]
+    )
+  } else {
+    // Invalid action or state
+    throw new Error(
+      action === 'check-in' && hasOpenAttendance 
+        ? 'Zaten açık bir giriş kaydınız var' 
+        : 'Açık giriş kaydınız bulunmuyor'
+    )
+  }
+  
+  // 4. Get personnel info for response
+  const personnelQuery = await client.query(
+    'SELECT name, surname, position FROM personnel WHERE id = $1',
+    [personnelId]
+  )
+  
+  const personnel = personnelQuery.rows[0]
+  
+  // 5. Create notification
+  await client.query(
+    `INSERT INTO notifications (
+      recipient_id, 
+      recipient_type, 
+      title, 
+      message, 
+      type
+    ) VALUES ($1, 'personnel', $2, $3, 'success')`,
+    [
+      personnelId,
+      hasOpenAttendance ? 'Çıkış Yapıldı' : 'Giriş Yapıldı',
+      hasOpenAttendance 
+        ? `Çıkış saatiniz: ${new Date().toLocaleTimeString('tr-TR')}`
+        : `Giriş saatiniz: ${new Date().toLocaleTimeString('tr-TR')}`
+    ]
+  )
+  
+  // Commit transaction
+  await client.query('COMMIT')
+  client.release()
+  
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({
+      success: true,
+      action: action,
+      attendance: attendanceRecord,
+      personnel,
+      workHours: workHours.toFixed(2),
+      message: `${action === 'check-in' ? 'Giriş' : 'Çıkış'} başarıyla kaydedildi`,
+      warning: earlyLeaveWarning // Erken çıkış uyarısı varsa
+    })
+  }
+  
+} catch (error) {
+  // Rollback transaction
+  await client.query('ROLLBACK')
+  client.release()
+  throw error
+}
 
-  } catch (error) {
-    console.error('Attendance check error:', error)
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        success: false,
-        error: error.message || 'İşlem başarısız'
-      })
-    }
+} catch (error) {
+  console.error('Attendance check error:', error)
+  return {
+    statusCode: 500,
+    headers,
+    body: JSON.stringify({
+      success: false,
+      error: error.message || 'İşlem başarısız'
+    })
   }
 }
