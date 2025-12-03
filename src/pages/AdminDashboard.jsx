@@ -93,7 +93,11 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
 
   const handleSectionChange = (sectionId) => {
     setActiveSection(sectionId)
-    navigate(`/admin/${sectionId === 'dashboard' ? 'dashboard' : sectionId}`)
+    if (sectionId === 'reports') {
+      navigate('/admin/reports')
+    } else {
+      navigate(`/admin/${sectionId === 'dashboard' ? 'dashboard' : sectionId}`)
+    }
   }
 
   // Delete personnel

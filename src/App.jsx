@@ -5,6 +5,7 @@ import PersonnelLogin from './pages/PersonnelLogin'
 import CheckIn from './pages/CheckIn'
 import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
+import Reports from './pages/Reports'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 
@@ -30,7 +31,8 @@ function App() {
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/personnel" element={<AdminDashboard section="personnel" />} />
           <Route path="/admin/locations" element={<AdminDashboard section="locations" />} />
-          <Route path="/admin/reports" element={<AdminDashboard section="reports" />} />
+          <Route path="/admin/attendance" element={<AdminDashboard section="attendance" />} />
+          <Route path="/admin/reports" element={<Reports />} />
           <Route path="/admin/settings" element={<AdminDashboard section="settings" />} />
         </Route>
       </Route>
