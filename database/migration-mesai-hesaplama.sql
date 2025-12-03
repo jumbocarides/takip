@@ -53,7 +53,7 @@ UPDATE personnel SET monthly_salary = 28000 WHERE personnel_no = 'P004';
 
 -- 4. Mesai hesaplama fonksiyonu
 CREATE OR REPLACE FUNCTION calculate_earnings_and_penalties(
-    p_attendance_id INTEGER
+    p_attendance_id UUID
 )
 RETURNS TABLE (
     overtime_mins INTEGER,
