@@ -82,14 +82,22 @@ const CheckIn = () => {
   // 🔒 GÜVENLİK: Token doğrulama
   useEffect(() => {
     const validateToken = async () => {
+      console.log('🎯 TOKEN KONTROL BAŞLADI')
+      console.log('URL:', window.location.href)
+      console.log('qrToken değeri:', qrToken)
+      console.log('qrToken tipi:', typeof qrToken)
+      console.log('qrToken uzunluğu:', qrToken?.length)
+      
       // Token yoksa engelle
       if (!qrToken) {
+        console.log('❌ TOKEN YOK - ENGELLENDI')
         setTokenValid(false)
         setTokenError('QR kod taramanız gerekiyor! Lütfen tablet ekranındaki QR kodu okutun.')
         return
       }
 
       // Token varsa önce geçerli say (API yoksa da çalışsın)
+      console.log('✅ TOKEN VAR - GEÇERLİ SAYILDI')
       setTokenValid(true)
       setLocationId('restaurant') // Varsayılan
       sessionStorage.setItem('validToken', qrToken)
@@ -306,6 +314,15 @@ const CheckIn = () => {
         >
           <Loader className="w-16 h-16 animate-spin text-primary-600 mx-auto mb-4" />
           <p className="text-gray-600 text-lg">QR kod doğrulanıyor...</p>
+          
+          {/* DEBUG PANEL */}
+          <div className="mt-8 bg-black text-green-400 p-4 rounded-lg text-xs text-left max-w-sm mx-auto">
+            <div>🔍 DEBUG INFO:</div>
+            <div>URL: {window.location.href}</div>
+            <div>Token: {qrToken || 'NULL'}</div>
+            <div>Token Length: {qrToken?.length || 0}</div>
+            <div>tokenValid: {String(tokenValid)}</div>
+          </div>
         </motion.div>
       </div>
     )
