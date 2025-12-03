@@ -22,26 +22,35 @@ const QRDisplay = () => {
     address: 'İstanbul, Türkiye'
   }
 
-  // Generate new QR code - Contains URL to check-in page
+  // Generate new QR code - Contains URL to check-in page with unique token
   const generateNewQR = async () => {
-    const timestamp = Date.now()
-    const randomStr = Math.random().toString(36).substring(2, 15)
-    const checkInUrl = `https://takibonline.netlify.app/checkin?loc=${locationId}&t=${timestamp}&c=${randomStr}`
-    const qrData = checkInUrl
-    
-    setQrCode(qrData)
-    
-    // Generate QR code image
     try {
-      const dataUrl = await QRCode.toDataURL(qrData, {
-        width: 400,
-        margin: 2,
-        color: {
-          dark: '#0369a1',
-          light: '#ffffff'
-        }
+      // Backend'den benzersiz token al
+      const response = await fetch('/.netlify/functions/qr-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId })
       })
-      setQrDataUrl(dataUrl)
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        const checkInUrl = `https://takibonline.netlify.app/checkin?token=${result.token}`
+        setQrCode(checkInUrl)
+        
+        // Generate QR code image
+        const dataUrl = await QRCode.toDataURL(checkInUrl, {
+          width: 400,
+          margin: 2,
+          color: {
+            dark: '#0369a1',
+            light: '#ffffff'
+          }
+        })
+        setQrDataUrl(dataUrl)
+      } else {
+        console.error('Token oluşturulamadı:', result.error)
+      }
     } catch (err) {
       console.error('QR kod oluşturulamadı:', err)
     }

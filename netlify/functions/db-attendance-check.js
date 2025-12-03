@@ -33,7 +33,7 @@ export async function handler(event, context) {
 
   try {
     const body = JSON.parse(event.body)
-    const { qrCode, personnelId, locationId, action, deviceId, deviceName } = body
+    const { qrCode, qrToken, personnelId, locationId, action, deviceId, deviceName } = body
 
     // ========== GÜVENLİK UYARI: QR KOD VE CİHAZ ==========
     // QR ve device yoksa uyar ama engelleme (test için)
@@ -176,6 +176,25 @@ export async function handler(event, context) {
         )
         
         attendanceRecord = insertQuery.rows[0]
+        
+        // 🔒 QR Token'ı kullanıldı olarak işaretle
+        if (qrToken) {
+          await client.query(
+            `UPDATE qr_tokens 
+             SET is_used = TRUE, 
+                 used_at = NOW(), 
+                 used_by = $1,
+                 ip_address = $2,
+                 user_agent = $3
+             WHERE token = $4`,
+            [
+              personnelId,
+              event.headers['x-forwarded-for'] || event.headers['client-ip'],
+              event.headers['user-agent'],
+              qrToken
+            ]
+          )
+        }
         
         // Log
         await client.query(

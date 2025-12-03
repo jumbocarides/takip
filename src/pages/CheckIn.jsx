@@ -58,7 +58,10 @@ const getDeviceName = () => {
 
 const CheckIn = () => {
   const [searchParams] = useSearchParams()
-  const locationId = searchParams.get('loc')
+  const qrToken = searchParams.get('token')
+  const [locationId, setLocationId] = useState(null)
+  const [tokenValid, setTokenValid] = useState(null) // null = checking, true = valid, false = invalid
+  const [tokenError, setTokenError] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [personnelData, setPersonnelData] = useState(null)
   const [hasActiveCheckIn, setHasActiveCheckIn] = useState(false)
@@ -76,21 +79,55 @@ const CheckIn = () => {
     'besiktas': 'Beşiktaş Şubesi'
   }
 
+  // 🔒 GÜVENLİK: Token doğrulama
+  useEffect(() => {
+    const validateToken = async () => {
+      if (!qrToken) {
+        setTokenValid(false)
+        setTokenError('QR kod taramanız gerekiyor! Lütfen tablet ekranındaki QR kodu okutun.')
+        return
+      }
+
+      try {
+        const response = await fetch('/.netlify/functions/qr-validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: qrToken })
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          setTokenValid(true)
+          setLocationId(result.location_id)
+          // Token'ı session'a kaydet
+          sessionStorage.setItem('validToken', qrToken)
+        } else {
+          setTokenValid(false)
+          if (result.code === 'TOKEN_EXPIRED') {
+            setTokenError('⏰ QR kod süresi dolmuş! Lütfen yeni QR kod tarayın.')
+          } else if (result.code === 'TOKEN_USED') {
+            setTokenError('🔒 Bu QR kod zaten kullanılmış! Lütfen yeni QR kod tarayın.')
+          } else if (result.code === 'TOKEN_INVALID') {
+            setTokenError('❌ Geçersiz QR kod! Lütfen tablet ekranındaki QR kodu okutun.')
+          } else {
+            setTokenError(result.error || 'QR kod doğrulanamadı')
+          }
+        }
+      } catch (error) {
+        console.error('Token validation error:', error)
+        setTokenValid(false)
+        setTokenError('Bağlantı hatası. Lütfen tekrar deneyin.')
+      }
+    }
+
+    validateToken()
+  }, [qrToken])
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
-
-    // 🔒 GÜVENLİK: QR token kontrolü
-    if (locationId) {
-      // QR okutuldu - token'ı kaydet (5 dakika geçerli)
-      const qrToken = {
-        locationId: locationId,
-        timestamp: Date.now(),
-        expiresIn: 5 * 60 * 1000 // 5 dakika
-      }
-      sessionStorage.setItem('qrToken', JSON.stringify(qrToken))
-    }
 
     return () => clearInterval(timer)
   }, [])
@@ -215,6 +252,7 @@ const CheckIn = () => {
           personnelId: personnelData.id,
           locationId: locationId || 'manual',
           action: action,
+          qrToken: qrToken,          // 🔒 QR Token (tek kullanımlık)
           qrCode: locationId ? `${locationId}-${Date.now()}` : 'manual-entry',
           deviceId: deviceId,        // 🔒 Cihaz kimliği
           deviceName: deviceName     // 📱 Cihaz adı
@@ -251,6 +289,67 @@ const CheckIn = () => {
     }
   }
 
+  // Token kontrol ediliyor
+  if (tokenValid === null) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <Loader className="w-16 h-16 animate-spin text-primary-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">QR kod doğrulanıyor...</p>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // Token geçersiz - Hata sayfası
+  if (tokenValid === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8"
+        >
+          <div className="text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Erişim Engellendi</h1>
+            <p className="text-gray-600 mb-6 text-lg">{tokenError}</p>
+            <div className="space-y-3">
+              <div className="bg-blue-50 rounded-lg p-4 text-left">
+                <p className="text-sm font-semibold text-blue-900 mb-2">📱 Nasıl Giriş Yapabilirim?</p>
+                <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                  <li>Tablet ekranına gidin</li>
+                  <li>QR kodu telefonunuzla tarayın</li>
+                  <li>Açılan sayfada giriş yapın</li>
+                </ol>
+              </div>
+              <div className="bg-orange-50 rounded-lg p-4 text-left">
+                <p className="text-xs text-orange-800">
+                  ⚠️ <strong>Güvenlik:</strong> Direkt URL ile giriş yapılamaz. Her giriş için yeni QR kod taramanız gerekir.
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-6 w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            >
+              Tekrar Dene
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // Token geçerli - Normal sayfa
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <motion.div
