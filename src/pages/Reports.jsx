@@ -342,7 +342,7 @@ const Reports = () => {
                         <span className="text-sm">Toplam Saat</span>
                       </div>
                       <p className="text-2xl font-bold text-blue-700">
-                        {parseFloat(reportData.summary.total_hours || 0).toFixed(1)} sa
+                        {Number(reportData.summary.total_hours || 0).toFixed(1)} sa
                       </p>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm p-4">
@@ -351,7 +351,7 @@ const Reports = () => {
                         <span className="text-sm">Fazla Mesai</span>
                       </div>
                       <p className="text-2xl font-bold text-orange-700">
-                        {(parseFloat(reportData.summary.total_overtime_mins || 0) / 60).toFixed(1)} sa
+                        {(Number(reportData.summary.total_overtime_mins || 0) / 60).toFixed(1)} sa
                       </p>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm p-4">
@@ -360,7 +360,7 @@ const Reports = () => {
                         <span className="text-sm">Net Kazanç</span>
                       </div>
                       <p className="text-2xl font-bold text-green-700">
-                        {parseFloat(reportData.summary.total_net_earnings || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                        {Number(reportData.summary.total_net_earnings || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                       </p>
                     </div>
                   </>
@@ -383,7 +383,7 @@ const Reports = () => {
                         <span className="text-sm">Aylık Bordro</span>
                       </div>
                       <p className="text-2xl font-bold text-blue-700">
-                        {parseFloat(reportData.summary.total_monthly_payroll || 0).toLocaleString('tr-TR')} ₺
+                        {Number(reportData.summary.total_monthly_payroll || 0).toLocaleString('tr-TR')} ₺
                       </p>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm p-4">
@@ -401,7 +401,7 @@ const Reports = () => {
                         <span className="text-sm">Ödenen Tutar</span>
                       </div>
                       <p className="text-2xl font-bold text-green-700">
-                        {parseFloat(reportData.summary.total_net_paid || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                        {Number(reportData.summary.total_net_paid || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                       </p>
                     </div>
                   </>
@@ -479,13 +479,13 @@ const Reports = () => {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 {row.check_out ? 
-                                  `${row.work_hours?.toFixed(1) || '-'} sa` :
+                                  `${Number(row.work_hours || 0).toFixed(1)} sa` :
                                   <span className="text-blue-600">-</span>
                                 }
                               </td>
                               <td className="px-4 py-3 text-right font-semibold">
                                 {row.check_out ? 
-                                  <span className="text-green-700">{parseFloat(row.net_earnings || 0).toFixed(2)} ₺</span> :
+                                  <span className="text-green-700">{Number(row.net_earnings || 0).toFixed(2)} ₺</span> :
                                   <span className="text-orange-600 text-xs">Hesaplanıyor...</span>
                                 }
                               </td>
@@ -497,9 +497,9 @@ const Reports = () => {
                               <td className="px-4 py-3 font-medium">{row.personnel_name || '-'}</td>
                               <td className="px-4 py-3">{row.position || '-'}</td>
                               <td className="px-4 py-3 text-right">{row.total_days_worked || 0}</td>
-                              <td className="px-4 py-3 text-right">{parseFloat(row.total_hours || 0).toFixed(1)} sa</td>
+                              <td className="px-4 py-3 text-right">{Number(row.total_hours || 0).toFixed(1)} sa</td>
                               <td className="px-4 py-3 text-right font-semibold text-green-700">
-                                {parseFloat(row.total_net_earnings || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                {Number(row.total_net_earnings || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                               </td>
                             </>
                           )}
@@ -508,10 +508,10 @@ const Reports = () => {
                               <td className="px-4 py-3 font-medium">{row.location_name || '-'}</td>
                               <td className="px-4 py-3 text-right">{row.total_personnel || 0}</td>
                               <td className="px-4 py-3 text-right">{row.total_attendance || 0}</td>
-                              <td className="px-4 py-3 text-right">{parseFloat(row.total_work_hours || 0).toFixed(1)} sa</td>
-                              <td className="px-4 py-3 text-right">{parseFloat(row.total_overtime_hours || 0).toFixed(1)} sa</td>
+                              <td className="px-4 py-3 text-right">{Number(row.total_work_hours || 0).toFixed(1)} sa</td>
+                              <td className="px-4 py-3 text-right">{Number(row.total_overtime_hours || 0).toFixed(1)} sa</td>
                               <td className="px-4 py-3 text-right font-semibold text-green-700">
-                                {parseFloat(row.total_net_pay || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                {Number(row.total_net_pay || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                               </td>
                             </>
                           )}
