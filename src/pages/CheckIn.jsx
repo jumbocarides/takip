@@ -80,6 +80,18 @@ const CheckIn = () => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
+
+    // 🔒 GÜVENLİK: QR token kontrolü
+    if (locationId) {
+      // QR okutuldu - token'ı kaydet (5 dakika geçerli)
+      const qrToken = {
+        locationId: locationId,
+        timestamp: Date.now(),
+        expiresIn: 5 * 60 * 1000 // 5 dakika
+      }
+      sessionStorage.setItem('qrToken', JSON.stringify(qrToken))
+    }
+
     return () => clearInterval(timer)
   }, [])
 
@@ -108,6 +120,32 @@ const CheckIn = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault()
+    
+    // 🔒 GÜVENLİK: QR token kontrolü - ZORUNLU!
+    const qrTokenStr = sessionStorage.getItem('qrToken')
+    
+    if (!qrTokenStr) {
+      toast.error(
+        '🚫 QR Kod Okutma Zorunludur!\n\nLütfen lokasyondaki QR kodu okutarak bu sayfaya gelin.',
+        { duration: 5000 }
+      )
+      return
+    }
+    
+    const qrToken = JSON.parse(qrTokenStr)
+    const now = Date.now()
+    const tokenAge = now - qrToken.timestamp
+    
+    // Token süresi dolmuş mu? (5 dakika)
+    if (tokenAge > qrToken.expiresIn) {
+      sessionStorage.removeItem('qrToken')
+      toast.error(
+        '⏰ QR Kodunun Süresi Doldu!\n\nLütfen QR kodu yeniden okutun.',
+        { duration: 5000 }
+      )
+      return
+    }
+    
     setLoading(true)
 
     try {
