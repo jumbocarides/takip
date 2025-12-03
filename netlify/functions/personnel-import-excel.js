@@ -62,6 +62,8 @@ exports.handler = async (event) => {
           location_code,
           monthly_salary,
           monthly_leave_days,
+          shift_start_time,
+          shift_end_time,
           password
         } = person
 
@@ -109,8 +111,10 @@ exports.handler = async (event) => {
                location_id = $7,
                monthly_salary = $8,
                monthly_leave_days = $9,
+               shift_start_time = $10,
+               shift_end_time = $11,
                updated_at = NOW()
-             WHERE id = $10`,
+             WHERE id = $12`,
             [
               name,
               surname,
@@ -121,6 +125,8 @@ exports.handler = async (event) => {
               locationId,
               monthly_salary || null,
               monthly_leave_days || 4,
+              shift_start_time || null,
+              shift_end_time || null,
               personnelId
             ]
           )
@@ -137,8 +143,9 @@ exports.handler = async (event) => {
               personnel_no, name, surname, email, phone,
               position, department, location_id, 
               monthly_salary, monthly_leave_days, remaining_leave_days,
+              shift_start_time, shift_end_time,
               password_hash, is_active
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, $11, true)`,
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, $11, $12, $13, true)`,
             [
               personnel_no,
               name,
@@ -150,6 +157,8 @@ exports.handler = async (event) => {
               locationId,
               monthly_salary || null,
               monthly_leave_days || 4,
+              shift_start_time || null,
+              shift_end_time || null,
               hashedPassword
             ]
           )

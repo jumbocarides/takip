@@ -22,6 +22,8 @@ const PersonnelExcelModal = ({ isOpen, onClose, onSuccess }) => {
         location_code: 'kadikoy',
         monthly_salary: 17000,
         monthly_leave_days: 4,
+        shift_start_time: '09:00',
+        shift_end_time: '18:00',
         password: '123456'
       },
       {
@@ -35,6 +37,8 @@ const PersonnelExcelModal = ({ isOpen, onClose, onSuccess }) => {
         location_code: 'besiktas',
         monthly_salary: 18000,
         monthly_leave_days: 4,
+        shift_start_time: '08:00',
+        shift_end_time: '17:00',
         password: '123456'
       }
     ]
@@ -55,6 +59,8 @@ const PersonnelExcelModal = ({ isOpen, onClose, onSuccess }) => {
       { wch: 12 }, // location_code
       { wch: 15 }, // monthly_salary
       { wch: 18 }, // monthly_leave_days
+      { wch: 15 }, // shift_start_time
+      { wch: 15 }, // shift_end_time
       { wch: 10 }  // password
     ]
 
@@ -253,6 +259,8 @@ const PersonnelExcelModal = ({ isOpen, onClose, onSuccess }) => {
                   <li>• <strong>location_code</strong>: kadikoy, besiktas, cengelkoy gibi</li>
                   <li>• <strong>position</strong>: Garson, Aşçı, Kasa, Müdür vb.</li>
                   <li>• <strong>department</strong>: Servis, Mutfak, Muhasebe, Yönetim</li>
+                  <li>• <strong>shift_start_time</strong>: 09:00 formatında (saat:dakika)</li>
+                  <li>• <strong>shift_end_time</strong>: 18:00 formatında (saat:dakika)</li>
                   <li>• <strong>password</strong> boş bırakılırsa varsayılan: 123456</li>
                 </ul>
               </div>
