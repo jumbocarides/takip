@@ -71,35 +71,55 @@ export async function handler(event, context) {
       const hasOpenAttendance = openAttendanceQuery.rows.length > 0
       let attendanceRecord
       let workHours = 0
+      let earlyLeaveWarning = null
       
       // Force action based on parameter
       if (action === 'check-out' && hasOpenAttendance) {
         // Check-out operation
         const attendance = openAttendanceQuery.rows[0]
         
-        // Calculate work hours
+        // Calculate work hours for response
         const checkOutTime = new Date()
         const checkInTime = new Date(attendance.check_in_time)
         workHours = (checkOutTime - checkInTime) / (1000 * 60 * 60) // Convert to hours
         
-        // Update attendance record
+        // Erken çıkma kontrolü (sadece uyarı, engelleme yok)
+        if (workHours < 8) {
+          const remainingHours = 8 - workHours
+          earlyLeaveWarning = `⚠️ Standart mesai süresini (8 saat) doldurmadınız. Kalan: ${remainingHours.toFixed(1)} saat. Erken çıkış cezası uygulanacaktır.`
+        }
+        
+        // Update attendance record - Trigger otomatik hesaplama yapacak
         const updateQuery = await client.query(
           `UPDATE attendance 
-           SET check_out_time = NOW(), 
-               check_out_method = 'qr',
-               work_hours = $1,
-               status = CASE 
-                 WHEN $1 >= 8 THEN 'present'
-                 WHEN $1 >= 4 THEN 'half_day'
-                 ELSE 'early_leave'
-               END,
-               updated_at = NOW()
-           WHERE id = $2
+           SET 
+             check_out_time = NOW(), 
+             check_out_method = 'qr',
+             updated_at = NOW()
+           WHERE id = $1
            RETURNING *`,
-          [workHours.toFixed(2), attendance.id]
+          [attendance.id]
         )
         
         attendanceRecord = updateQuery.rows[0]
+        
+        // Eğer erken çıkma varsa, notification ekle
+        if (earlyLeaveWarning) {
+          await client.query(
+            `INSERT INTO notifications (
+              recipient_id, 
+              recipient_type, 
+              title, 
+              message, 
+              type
+            ) VALUES ($1, 'personnel', $2, $3, 'warning')`,
+            [
+              personnelId,
+              'Erken Çıkış Uyarısı',
+              earlyLeaveWarning
+            ]
+          )
+        }
         
         // Log the action
         await client.query(
@@ -207,7 +227,8 @@ export async function handler(event, context) {
           attendance: attendanceRecord,
           personnel,
           workHours: workHours.toFixed(2),
-          message: `${action === 'check-in' ? 'Giriş' : 'Çıkış'} başarıyla kaydedildi`
+          message: `${action === 'check-in' ? 'Giriş' : 'Çıkış'} başarıyla kaydedildi`,
+          warning: earlyLeaveWarning // Erken çıkış uyarısı varsa
         })
       }
       

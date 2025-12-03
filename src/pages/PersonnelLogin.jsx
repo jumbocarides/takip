@@ -59,6 +59,20 @@ const PersonnelLogin = () => {
         
         toast.success(`${actionType} başarılı! ${personnelName}`, { duration: 4000 })
         
+        // Eğer erken çıkış uyarısı varsa göster
+        if (result.warning) {
+          setTimeout(() => {
+            toast.error(result.warning, {
+              duration: 6000,
+              style: {
+                background: '#FEF3C7',
+                color: '#92400E',
+                fontWeight: 'bold'
+              }
+            })
+          }, 500)
+        }
+        
         setLastAction({
           type: result.action,
           time: new Date().toISOString(),
