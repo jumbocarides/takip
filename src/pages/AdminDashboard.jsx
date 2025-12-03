@@ -5,7 +5,7 @@ import {
   Users, MapPin, FileText, Settings, LogOut, Home,
   Clock, Calendar, TrendingUp, Activity, Download,
   Plus, Edit, Trash2, Eye, Filter, Search,
-  ChevronLeft, ChevronRight, BarChart3, PieChart, DollarSign
+  ChevronLeft, ChevronRight, BarChart3, PieChart, DollarSign, FileSpreadsheet
 } from 'lucide-react'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -15,6 +15,7 @@ import PersonnelAddModal from '../components/PersonnelAddModal'
 import PersonnelShiftModal from '../components/PersonnelShiftModal'
 import PersonnelDetailModal from '../components/PersonnelDetailModal'
 import PersonnelEditModal from '../components/PersonnelEditModal'
+import PersonnelExcelModal from '../components/PersonnelExcelModal'
 import LocationAddModal from '../components/LocationAddModal'
 import LocationEditModal from '../components/LocationEditModal'
 import LiveEarningsCounter from '../components/LiveEarningsCounter'
@@ -44,6 +45,7 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
   const [showShiftModal, setShowShiftModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showExcelModal, setShowExcelModal] = useState(false)
   const [showLocationAddModal, setShowLocationAddModal] = useState(false)
   const [showLocationEditModal, setShowLocationEditModal] = useState(false)
   const [selectedPersonnel, setSelectedPersonnel] = useState(null)
@@ -402,6 +404,13 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
           >
             <Download className="w-4 h-4" />
             Excel İndir
+          </button>
+          <button 
+            onClick={() => setShowExcelModal(true)}
+            className="btn-success flex items-center gap-2"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Excel ile Yönet
           </button>
           <button 
             onClick={() => setShowModal(true)}
@@ -853,6 +862,13 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
         }}
         onSuccess={fetchDashboardData}
         location={selectedLocation}
+      />
+
+      {/* Excel ile Yönet Modal */}
+      <PersonnelExcelModal
+        isOpen={showExcelModal}
+        onClose={() => setShowExcelModal(false)}
+        onSuccess={fetchDashboardData}
       />
     </div>
   )
