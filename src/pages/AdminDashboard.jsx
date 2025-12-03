@@ -269,34 +269,60 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
             ) : attendance.length === 0 ? (
               <div className="text-center py-8 text-gray-500">Bugün henüz giriş yapılmamış</div>
             ) : (
-              attendance.slice(0, 5).map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{record.personnel_name}</p>
-                    <p className="text-sm text-gray-600">{record.location_name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm">
-                      <span className="text-green-600">
-                        {format(new Date(record.check_in_time), 'HH:mm')}
-                      </span>
-                      {record.check_out_time && (
+              attendance.slice(0, 5).map((record) => {
+                // Canlı çalışma süresi hesaplama
+                const now = new Date()
+                const checkIn = new Date(record.check_in_time)
+                const currentWorkHours = record.check_out_time ? 
+                  record.work_hours : 
+                  (now - checkIn) / (1000 * 60 * 60)
+                
+                // Geçici kazanç tahmini (saatlik ücret × çalışma saati)
+                const estimatedEarnings = record.hourly_wage ? 
+                  (currentWorkHours * record.hourly_wage).toFixed(2) : null
+                
+                return (
+                  <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{record.personnel_name}</p>
+                      <p className="text-sm text-gray-600">{record.location_name}</p>
+                      {!record.check_out_time && estimatedEarnings && (
+                        <p className="text-xs text-purple-600 font-semibold mt-1">
+                          ≈ {estimatedEarnings} ₺ (şu ana kadar)
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm">
+                        <span className="text-green-600 font-medium">
+                          {format(new Date(record.check_in_time), 'HH:mm')}
+                        </span>
+                        {record.check_out_time && (
+                          <>
+                            {' - '}
+                            <span className="text-red-600 font-medium">
+                              {format(new Date(record.check_out_time), 'HH:mm')}
+                            </span>
+                          </>
+                        )}
+                      </p>
+                      {record.check_out_time ? (
                         <>
-                          {' - '}
-                          <span className="text-red-600">
-                            {format(new Date(record.check_out_time), 'HH:mm')}
-                          </span>
+                          <p className="text-xs text-gray-500">{record.work_hours?.toFixed(1)} saat</p>
+                          <p className="text-xs font-bold text-green-700 mt-1">
+                            {parseFloat(record.net_earnings || 0).toFixed(2)} ₺
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded block mt-1">Çalışıyor</span>
+                          <p className="text-xs text-blue-600 mt-1">{currentWorkHours.toFixed(1)} saat</p>
                         </>
                       )}
-                    </p>
-                    {record.check_out_time ? (
-                      <p className="text-xs text-gray-500">{record.work_hours?.toFixed(1)} saat</p>
-                    ) : (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Çalışıyor</span>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              }))
             )}
           </div>
         </motion.div>

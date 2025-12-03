@@ -59,9 +59,11 @@ export async function handler(event, context) {
         a.check_in_time,
         a.check_out_time,
         a.work_hours,
+        a.net_earnings,
         a.status,
         p.name || ' ' || p.surname as personnel_name,
         p.position,
+        p.hourly_wage,
         l.name as location_name,
         l.location_code
        FROM attendance a

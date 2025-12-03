@@ -445,11 +445,34 @@ const Reports = () => {
                               <td className="px-4 py-3">{format(new Date(row.work_date), 'dd MMM yyyy', { locale: tr })}</td>
                               <td className="px-4 py-3 font-medium">{row.personnel_name}</td>
                               <td className="px-4 py-3">{row.location_name}</td>
-                              <td className="px-4 py-3">{row.check_in || '-'}</td>
-                              <td className="px-4 py-3">{row.check_out || '-'}</td>
-                              <td className="px-4 py-3 text-right">{row.work_hours?.toFixed(1) || '-'} sa</td>
-                              <td className="px-4 py-3 text-right font-semibold text-green-700">
-                                {parseFloat(row.net_earnings || 0).toFixed(2)} ₺
+                              <td className="px-4 py-3">
+                                {row.check_in ? 
+                                  (row.check_in.includes(':') ? 
+                                    row.check_in.substring(0, 5) : 
+                                    format(new Date(`2000-01-01T${row.check_in}`), 'HH:mm')
+                                  ) : '-'
+                                }
+                              </td>
+                              <td className="px-4 py-3">
+                                {row.check_out ? 
+                                  (row.check_out.includes(':') ? 
+                                    row.check_out.substring(0, 5) : 
+                                    format(new Date(`2000-01-01T${row.check_out}`), 'HH:mm')
+                                  ) : 
+                                  <span className="text-orange-600 font-medium">Devam ediyor</span>
+                                }
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                {row.check_out ? 
+                                  `${row.work_hours?.toFixed(1) || '-'} sa` :
+                                  <span className="text-blue-600">-</span>
+                                }
+                              </td>
+                              <td className="px-4 py-3 text-right font-semibold">
+                                {row.check_out ? 
+                                  <span className="text-green-700">{parseFloat(row.net_earnings || 0).toFixed(2)} ₺</span> :
+                                  <span className="text-orange-600 text-xs">Hesaplanıyor...</span>
+                                }
                               </td>
                             </>
                           )}
