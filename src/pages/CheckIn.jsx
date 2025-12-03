@@ -82,47 +82,41 @@ const CheckIn = () => {
   // 🔒 GÜVENLİK: Token doğrulama
   useEffect(() => {
     const validateToken = async () => {
-      // ⚠️ GEÇİCİ: Token sistemi hazır olana kadar bypass
-      console.log('🔍 DEBUG - Token:', qrToken)
-      
       if (!qrToken) {
-        // Token yoksa ama yine de devam et (geçici)
-        console.warn('⚠️ TOKEN YOK - Ama geçici olarak devam ediyoruz')
-        setTokenValid(true)
-        setLocationId('test-restaurant')
+        setTokenValid(false)
+        setTokenError('QR kod taramanız gerekiyor! Lütfen tablet ekranındaki QR kodu okutun.')
         return
       }
 
       try {
-        console.log('📡 Token validate ediliyor...')
         const response = await fetch('/.netlify/functions/qr-validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: qrToken })
         })
 
-        console.log('📡 Response status:', response.status)
         const result = await response.json()
-        console.log('📦 Response data:', result)
 
         if (result.success) {
-          console.log('✅ Token geçerli!')
           setTokenValid(true)
           setLocationId(result.location_id)
           sessionStorage.setItem('validToken', qrToken)
         } else {
-          console.error('❌ Token geçersiz:', result)
-          // ⚠️ GEÇİCİ: Hata olsa bile devam et
-          console.warn('⚠️ API HATASI - Ama geçici olarak devam ediyoruz')
-          setTokenValid(true)
-          setLocationId('test-restaurant')
+          setTokenValid(false)
+          if (result.code === 'TOKEN_EXPIRED') {
+            setTokenError('⏰ QR kod süresi dolmuş! Lütfen yeni QR kod tarayın.')
+          } else if (result.code === 'TOKEN_USED') {
+            setTokenError('🔒 Bu QR kod zaten kullanılmış! Lütfen yeni QR kod tarayın.')
+          } else if (result.code === 'TOKEN_INVALID') {
+            setTokenError('❌ Geçersiz QR kod! Lütfen tablet ekranındaki QR kodu okutun.')
+          } else {
+            setTokenError(result.error || 'QR kod doğrulanamadı')
+          }
         }
       } catch (error) {
-        console.error('❌ Token validation hatası:', error)
-        // ⚠️ GEÇİCİ: Hata olsa bile devam et
-        console.warn('⚠️ CATCH HATASI - Ama geçici olarak devam ediyoruz')
-        setTokenValid(true)
-        setLocationId('test-restaurant')
+        console.error('Token validation error:', error)
+        setTokenValid(false)
+        setTokenError('Bağlantı hatası. Lütfen tekrar deneyin.')
       }
     }
 
@@ -362,55 +356,6 @@ const CheckIn = () => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        {/* 🔥 DEVASA DEBUG EKRANI - GEÇİCİ */}
-        <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 border-8 border-black rounded-2xl p-6 mb-6 shadow-2xl animate-pulse">
-          <div className="bg-black text-white p-6 rounded-xl">
-            <h1 className="text-3xl font-black mb-4 text-center text-yellow-400">
-              🔥 DEBUG MODU 🔥
-            </h1>
-            
-            <div className="space-y-3 text-lg font-mono">
-              <div className="bg-gray-900 p-3 rounded">
-                <div className="text-yellow-300">📍 URL:</div>
-                <div className="text-white break-all text-xs">{window.location.href}</div>
-              </div>
-              
-              <div className="bg-gray-900 p-3 rounded">
-                <div className="text-yellow-300">🎫 Token:</div>
-                <div className={`text-white break-all text-xs ${!qrToken ? 'text-red-500 font-bold' : 'text-green-400'}`}>
-                  {qrToken || '❌ YOK!'}
-                </div>
-                {qrToken && <div className="text-xs text-gray-400">Uzunluk: {qrToken.length}</div>}
-              </div>
-              
-              <div className="bg-gray-900 p-3 rounded">
-                <div className="text-yellow-300">📍 Location ID:</div>
-                <div className="text-white">{locationId || 'YOK'}</div>
-              </div>
-              
-              <div className="bg-gray-900 p-3 rounded">
-                <div className="text-yellow-300">✅ Token Valid:</div>
-                <div className={`text-white font-bold ${tokenValid ? 'text-green-400' : 'text-red-500'}`}>
-                  {tokenValid ? '✅ TRUE' : '❌ FALSE'}
-                </div>
-              </div>
-              
-              <div className="bg-gray-900 p-3 rounded">
-                <div className="text-yellow-300">⏰ Zaman:</div>
-                <div className="text-white text-xs">{new Date().toLocaleString('tr-TR')}</div>
-              </div>
-            </div>
-            
-            <div className="mt-4 p-4 bg-red-900 rounded-lg border-2 border-red-500">
-              <p className="text-yellow-300 font-bold text-center text-sm">
-                ⚠️ GEÇİCİ BYPASS MODU AKTİF ⚠️
-                <br/>
-                Token kontrolü şu an devre dışı!
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">

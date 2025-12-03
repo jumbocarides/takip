@@ -25,8 +25,6 @@ const QRDisplay = () => {
   // Generate new QR code - Contains URL to check-in page with unique token
   const generateNewQR = async () => {
     try {
-      console.log('🔄 QR Generate başlatıldı - Location:', locationId)
-      
       // Backend'den benzersiz token al
       const response = await fetch('/.netlify/functions/qr-generate', {
         method: 'POST',
@@ -34,14 +32,10 @@ const QRDisplay = () => {
         body: JSON.stringify({ locationId })
       })
       
-      console.log('📡 API Response status:', response.status)
-      
       const result = await response.json()
-      console.log('📦 API Result:', result)
       
       if (result.success && result.token) {
         const checkInUrl = `https://takibonline.netlify.app/checkin?token=${result.token}`
-        console.log('✅ QR URL oluşturuldu:', checkInUrl)
         setQrCode(checkInUrl)
         
         // Generate QR code image
@@ -53,13 +47,12 @@ const QRDisplay = () => {
             light: '#ffffff'
           }
         })
-        console.log('✅ QR DataURL oluşturuldu')
         setQrDataUrl(dataUrl)
       } else {
-        console.error('❌ Token oluşturulamadı:', result.error)
+        console.error('Token oluşturulamadı:', result.error)
       }
     } catch (err) {
-      console.error('❌ QR Generate hatası:', err)
+      console.error('QR Generate hatası:', err)
     }
     
     setCountdown(90)
