@@ -44,7 +44,7 @@ exports.handler = async (event) => {
 
     // Kullanıcıyı bul
     const result = await client.query(
-      `SELECT id, email, password, name, role, is_active, full_name 
+      `SELECT id, email, password_hash, name, role, is_active, full_name 
        FROM users 
        WHERE email = $1 AND role = 'admin'`,
       [email]
@@ -76,7 +76,7 @@ exports.handler = async (event) => {
     }
 
     // Şifre kontrolü
-    const isPasswordValid = await bcrypt.compare(password, user.password)
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash)
 
     if (!isPasswordValid) {
       return {
