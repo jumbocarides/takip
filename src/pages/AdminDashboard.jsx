@@ -279,7 +279,7 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
                 
                 // Geçici kazanç tahmini (saatlik ücret × çalışma saati)
                 const estimatedEarnings = record.hourly_wage ? 
-                  (currentWorkHours * record.hourly_wage).toFixed(2) : null
+                  Number(currentWorkHours * record.hourly_wage).toFixed(2) : null
                 
                 return (
                   <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -308,15 +308,15 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
                       </p>
                       {record.check_out_time ? (
                         <>
-                          <p className="text-xs text-gray-500">{record.work_hours?.toFixed(1)} saat</p>
+                          <p className="text-xs text-gray-500">{Number(record.work_hours || 0).toFixed(1)} saat</p>
                           <p className="text-xs font-bold text-green-700 mt-1">
-                            {parseFloat(record.net_earnings || 0).toFixed(2)} ₺
+                            {Number(record.net_earnings || 0).toFixed(2)} ₺
                           </p>
                         </>
                       ) : (
                         <>
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded block mt-1">Çalışıyor</span>
-                          <p className="text-xs text-blue-600 mt-1">{currentWorkHours.toFixed(1)} saat</p>
+                          <p className="text-xs text-blue-600 mt-1">{Number(currentWorkHours).toFixed(1)} saat</p>
                         </>
                       )}
                     </div>
@@ -488,12 +488,12 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <span className="text-sm font-bold text-green-700">
-                          {person.monthly_salary ? `${parseFloat(person.monthly_salary).toLocaleString('tr-TR')} ₺` : '-'}
+                          {person.monthly_salary ? `${Number(person.monthly_salary).toLocaleString('tr-TR')} ₺` : '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <span className="text-sm text-gray-900">
-                          {person.daily_wage ? `${parseFloat(person.daily_wage).toFixed(2)} ₺` : '-'}
+                          {person.daily_wage ? `${Number(person.daily_wage).toFixed(2)} ₺` : '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
