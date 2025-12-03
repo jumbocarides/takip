@@ -452,22 +452,27 @@ const Reports = () => {
                         <tr key={idx} className="hover:bg-gray-50">
                           {reportType === 'attendance' && (
                             <>
-                              <td className="px-4 py-3">{format(new Date(row.work_date), 'dd MMM yyyy', { locale: tr })}</td>
-                              <td className="px-4 py-3 font-medium">{row.personnel_name}</td>
-                              <td className="px-4 py-3">{row.location_name}</td>
+                              <td className="px-4 py-3">
+                                {row.work_date ? 
+                                  format(new Date(row.work_date), 'dd MMM yyyy', { locale: tr }) : 
+                                  '-'
+                                }
+                              </td>
+                              <td className="px-4 py-3 font-medium">{row.personnel_name || '-'}</td>
+                              <td className="px-4 py-3">{row.location_name || '-'}</td>
                               <td className="px-4 py-3">
                                 {row.check_in ? 
-                                  (row.check_in.includes(':') ? 
+                                  (typeof row.check_in === 'string' && row.check_in.includes(':') ? 
                                     row.check_in.substring(0, 5) : 
-                                    format(new Date(`2000-01-01T${row.check_in}`), 'HH:mm')
+                                    '-'
                                   ) : '-'
                                 }
                               </td>
                               <td className="px-4 py-3">
                                 {row.check_out ? 
-                                  (row.check_out.includes(':') ? 
+                                  (typeof row.check_out === 'string' && row.check_out.includes(':') ? 
                                     row.check_out.substring(0, 5) : 
-                                    format(new Date(`2000-01-01T${row.check_out}`), 'HH:mm')
+                                    '-'
                                   ) : 
                                   <span className="text-orange-600 font-medium">Devam ediyor</span>
                                 }
@@ -488,9 +493,9 @@ const Reports = () => {
                           )}
                           {reportType === 'personnel' && (
                             <>
-                              <td className="px-4 py-3">{row.personnel_no}</td>
-                              <td className="px-4 py-3 font-medium">{row.personnel_name}</td>
-                              <td className="px-4 py-3">{row.position}</td>
+                              <td className="px-4 py-3">{row.personnel_no || '-'}</td>
+                              <td className="px-4 py-3 font-medium">{row.personnel_name || '-'}</td>
+                              <td className="px-4 py-3">{row.position || '-'}</td>
                               <td className="px-4 py-3 text-right">{row.total_days_worked || 0}</td>
                               <td className="px-4 py-3 text-right">{parseFloat(row.total_hours || 0).toFixed(1)} sa</td>
                               <td className="px-4 py-3 text-right font-semibold text-green-700">
@@ -500,7 +505,7 @@ const Reports = () => {
                           )}
                           {reportType === 'location' && (
                             <>
-                              <td className="px-4 py-3 font-medium">{row.location_name}</td>
+                              <td className="px-4 py-3 font-medium">{row.location_name || '-'}</td>
                               <td className="px-4 py-3 text-right">{row.total_personnel || 0}</td>
                               <td className="px-4 py-3 text-right">{row.total_attendance || 0}</td>
                               <td className="px-4 py-3 text-right">{parseFloat(row.total_work_hours || 0).toFixed(1)} sa</td>
