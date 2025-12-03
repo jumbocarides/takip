@@ -59,6 +59,30 @@ export async function handler(event, context) {
 
     const personnel = personnelQuery.rows[0];
 
+    // BU AYKİ HAK EDİŞ HESAPLAMA (En güncel)
+    const currentMonthQuery = await client.query(
+      `SELECT 
+        COUNT(*) as worked_days,
+        SUM(COALESCE(work_hours, 0)) as total_hours,
+        SUM(COALESCE(overtime_minutes, 0)) as total_overtime_mins,
+        SUM(COALESCE(late_arrival_minutes, 0)) as total_late_mins,
+        SUM(COALESCE(early_leave_minutes, 0)) as total_early_leave_mins,
+        SUM(COALESCE(overtime_amount, 0)) as total_overtime_amount,
+        SUM(COALESCE(late_penalty, 0)) as total_late_penalty,
+        SUM(COALESCE(early_leave_penalty, 0)) as total_early_leave_penalty,
+        SUM(COALESCE(daily_earnings, 0)) as total_earnings,
+        SUM(COALESCE(net_earnings, 0)) as total_net_earnings,
+        MIN(DATE(check_in_time)) as first_work_day,
+        MAX(DATE(check_in_time)) as last_work_day
+       FROM attendance
+       WHERE personnel_id = $1
+       AND DATE_TRUNC('month', check_in_time) = DATE_TRUNC('month', CURRENT_DATE)
+       AND check_out_time IS NOT NULL`,
+      [personnelId]
+    );
+
+    const currentMonth = currentMonthQuery.rows[0];
+
     // Son 30 gün attendance özeti
     const attendanceQuery = await client.query(
       `SELECT 
@@ -103,7 +127,8 @@ export async function handler(event, context) {
       body: JSON.stringify({
         success: true,
         personnel: personnel,
-        summary: summary,
+        currentMonth: currentMonth, // Bu ayki detaylı hak ediş
+        summary: summary, // Son 30 gün özeti
         recentAttendance: recentQuery.rows
       })
     };
