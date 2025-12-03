@@ -15,6 +15,8 @@ import PersonnelAddModal from '../components/PersonnelAddModal'
 import PersonnelShiftModal from '../components/PersonnelShiftModal'
 import PersonnelDetailModal from '../components/PersonnelDetailModal'
 import PersonnelEditModal from '../components/PersonnelEditModal'
+import LocationAddModal from '../components/LocationAddModal'
+import LocationEditModal from '../components/LocationEditModal'
 
 const AdminDashboard = ({ section = 'dashboard' }) => {
   const navigate = useNavigate()
@@ -28,8 +30,11 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
   const [showShiftModal, setShowShiftModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showLocationAddModal, setShowLocationAddModal] = useState(false)
+  const [showLocationEditModal, setShowLocationEditModal] = useState(false)
   const [selectedPersonnel, setSelectedPersonnel] = useState(null)
   const [selectedPersonnelId, setSelectedPersonnelId] = useState(null)
+  const [selectedLocation, setSelectedLocation] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
   
   // API Data States
@@ -125,6 +130,39 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
       console.error('Delete error:', error)
       toast.error('Bir hata oluştu')
     }
+  }
+
+  // Delete location
+  const handleDeleteLocation = async (locationId, locationName) => {
+    if (!confirm(`${locationName} lokasyonunu pasifleştirmek istediğinize emin misiniz?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch('/.netlify/functions/location-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success('Lokasyon pasifleştirildi')
+        fetchDashboardData()
+      } else {
+        toast.error(result.error || 'Silme işlemi başarısız')
+      }
+    } catch (error) {
+      console.error('Delete location error:', error)
+      toast.error('Bir hata oluştu')
+    }
+  }
+
+  // Open QR Display
+  const handleOpenQR = (locationCode) => {
+    const qrUrl = `/qr/${locationCode}`
+    window.open(qrUrl, '_blank')
   }
 
   // Excel Export
@@ -487,38 +525,96 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
         return renderPersonnel()
       case 'locations':
         return (
-          <div className="card">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Lokasyon Yönetimi</h2>
-            {loading ? (
-              <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {locations.map((location) => (
-                  <div key={location.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-lg">{location.name}</h3>
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                        {location.location_code}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-4">{location.address}</p>
-                    <div className="flex items-center justify-between border-t pt-3">
-                      <div>
-                        <p className="text-xs text-gray-500">Toplam Personel</p>
-                        <p className="text-lg font-semibold text-gray-900">{location.personnel_count}</p>
+          <div>
+            {/* Header with Add Button */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Lokasyon Yönetimi</h2>
+              <button
+                onClick={() => setShowLocationAddModal(true)}
+                className="btn-primary flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="w-5 h-5" />
+                Yeni Lokasyon
+              </button>
+            </div>
+
+            {/* Locations Grid */}
+            <div className="card">
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
+              ) : locations.length === 0 ? (
+                <div className="text-center py-12">
+                  <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-4">Henüz lokasyon eklenmemiş</p>
+                  <button
+                    onClick={() => setShowLocationAddModal(true)}
+                    className="btn-primary"
+                  >
+                    İlk Lokasyonu Ekle
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {locations.map((location) => (
+                    <div key={location.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all">
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-bold text-lg text-gray-900">{location.name}</h3>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                          {location.location_code}
+                        </span>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Bugün Aktif</p>
-                        <p className="text-lg font-semibold text-green-600">{location.active_today || 0}</p>
+
+                      {/* Address */}
+                      <p className="text-gray-600 text-sm mb-1">{location.address || '-'}</p>
+                      <p className="text-gray-500 text-xs mb-4">
+                        {location.city && location.district ? `${location.district}, ${location.city}` : '-'}
+                      </p>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b">
+                        <div className="bg-gray-50 rounded p-2 text-center">
+                          <p className="text-xs text-gray-500 mb-1">Toplam Personel</p>
+                          <p className="text-xl font-bold text-gray-900">{location.personnel_count || 0}</p>
+                        </div>
+                        <div className="bg-green-50 rounded p-2 text-center">
+                          <p className="text-xs text-gray-500 mb-1">Bugün Aktif</p>
+                          <p className="text-xl font-bold text-green-600">{location.active_today || 0}</p>
+                        </div>
                       </div>
-                      <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                        Detaylar →
-                      </button>
+
+                      {/* Action Buttons */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleOpenQR(location.location_code)}
+                          className="btn-primary text-sm py-2 bg-purple-600 hover:bg-purple-700 flex items-center justify-center gap-1"
+                        >
+                          <Eye className="w-4 h-4" />
+                          QR Göster
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedLocation(location)
+                            setShowLocationEditModal(true)
+                          }}
+                          className="btn-secondary text-sm py-2 flex items-center justify-center gap-1"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Düzenle
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLocation(location.id, location.name)}
+                          className="col-span-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Lokasyonu Pasifleştir
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )
       case 'reports':
@@ -654,6 +750,24 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
         onSuccess={fetchDashboardData}
         personnel={selectedPersonnel}
         locations={locations}
+      />
+
+      {/* Lokasyon Ekle Modal */}
+      <LocationAddModal
+        isOpen={showLocationAddModal}
+        onClose={() => setShowLocationAddModal(false)}
+        onSuccess={fetchDashboardData}
+      />
+
+      {/* Lokasyon Düzenle Modal */}
+      <LocationEditModal
+        isOpen={showLocationEditModal}
+        onClose={() => {
+          setShowLocationEditModal(false)
+          setSelectedLocation(null)
+        }}
+        onSuccess={fetchDashboardData}
+        location={selectedLocation}
       />
     </div>
   )
