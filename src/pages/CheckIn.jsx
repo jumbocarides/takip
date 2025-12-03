@@ -1,10 +1,60 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LogIn, LogOut, User, Key, Clock, MapPin, Loader } from 'lucide-react'
+import { LogIn, LogOut, User, Key, Clock, MapPin, Loader, Smartphone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
+
+// 🔒 GÜVENLİK: Cihaz kimliği oluştur
+const generateDeviceFingerprint = () => {
+  try {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    ctx.textBaseline = 'top'
+    ctx.font = '14px Arial'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillStyle = '#f60'
+    ctx.fillRect(125, 1, 62, 20)
+    ctx.fillStyle = '#069'
+    ctx.fillText('Device ID', 2, 15)
+    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)'
+    ctx.fillText('Security', 4, 17)
+    
+    const canvasData = canvas.toDataURL()
+    
+    const fingerprint = btoa(
+      navigator.userAgent +
+      navigator.language +
+      screen.width + 'x' + screen.height +
+      screen.colorDepth +
+      new Date().getTimezoneOffset() +
+      canvasData.substring(0, 100)
+    ).substring(0, 64)
+    
+    return fingerprint
+  } catch {
+    // Fallback
+    return btoa(
+      navigator.userAgent + 
+      navigator.language + 
+      Date.now()
+    ).substring(0, 64)
+  }
+}
+
+const getDeviceName = () => {
+  const ua = navigator.userAgent
+  if (/iPhone/.test(ua)) return 'iPhone'
+  if (/iPad/.test(ua)) return 'iPad'
+  if (/Android/.test(ua)) {
+    const match = ua.match(/Android\s([0-9.]+)/)
+    return `Android ${match ? match[1] : ''}`
+  }
+  if (/Windows/.test(ua)) return 'Windows PC'
+  if (/Mac/.test(ua)) return 'Mac'
+  return 'Bilinmeyen Cihaz'
+}
 
 const CheckIn = () => {
   const [searchParams] = useSearchParams()
@@ -16,6 +66,8 @@ const CheckIn = () => {
   const [personnelNo, setPersonnelNo] = useState('')
   const [password, setPassword] = useState('')
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [deviceId] = useState(() => generateDeviceFingerprint())
+  const [deviceName] = useState(() => getDeviceName())
 
   // Location names
   const locationNames = {
@@ -100,6 +152,13 @@ const CheckIn = () => {
     setLoading(true)
 
     try {
+      // 🔒 GÜVENLİK: QR kod zorunlu kontrolü
+      if (!locationId) {
+        toast.error('QR kod bulunamadı! Lütfen QR kodu okutun.')
+        setLoading(false)
+        return
+      }
+
       const response = await fetch('/.netlify/functions/db-attendance-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -107,7 +166,9 @@ const CheckIn = () => {
           personnelId: personnelData.id,
           locationId: locationId,
           action: action,
-          qrCode: `${locationId}-${Date.now()}`
+          qrCode: `${locationId}-${Date.now()}`,
+          deviceId: deviceId,        // 🔒 Cihaz kimliği
+          deviceName: deviceName     // 📱 Cihaz adı
         })
       })
 
