@@ -50,6 +50,8 @@ const Reports = () => {
 
   const fetchReportData = async () => {
     setLoading(true)
+    setReportData(null) // Önceki veriyi temizle
+    
     try {
       let endpoint = ''
       let params = new URLSearchParams({
@@ -76,20 +78,28 @@ const Reports = () => {
           endpoint = `/.netlify/functions/reports-location?${params}`
           break
         default:
+          setLoading(false)
           return
       }
 
       const response = await fetch(endpoint)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const result = await response.json()
 
       if (result.success) {
         setReportData(result)
       } else {
-        toast.error('Rapor yüklenemedi')
+        toast.error(result.error || 'Rapor yüklenemedi')
+        setReportData(null)
       }
     } catch (error) {
       console.error('Report fetch error:', error)
-      toast.error('Bir hata oluştu')
+      toast.error('Rapor yüklenirken hata oluştu: ' + error.message)
+      setReportData(null)
     } finally {
       setLoading(false)
     }
@@ -437,7 +447,7 @@ const Reports = () => {
                     )}
                   </thead>
                   <tbody className="divide-y">
-                    {reportData.data && reportData.data.length > 0 ? (
+                    {reportData && reportData.data && reportData.data.length > 0 ? (
                       reportData.data.map((row, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
                           {reportType === 'attendance' && (
