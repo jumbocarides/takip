@@ -12,34 +12,53 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
     
-    if (!email || !password) {
-      toast.error('Lütfen tüm alanları doldurun')
-      return
-    }
-
-    // For demo purposes - use these credentials
-    const demoEmail = 'admin@restaurant.com'
-    const demoPassword = 'admin123'
-    
-    if (email === demoEmail && password === demoPassword) {
-      // Simulate successful login
-      useAuthStore.setState({
-        user: {
-          id: '1',
-          email: demoEmail,
-          name: 'Admin User',
-          role: 'admin'
-        },
-        token: 'demo-token-' + Date.now()
+    try {
+      const response = await fetch('/.netlify/functions/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
       })
-      
-      toast.success('Giriş başarılı!')
-      navigate('/admin/dashboard')
-    } else {
-      toast.error('E-posta veya şifre hatalı')
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Admin bilgilerini sakla
+        localStorage.setItem('adminUser', JSON.stringify({
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          role: result.user.role,
+          loginTime: new Date().toISOString()
+        }))
+        localStorage.setItem('adminToken', JSON.stringify({
+          token: result.token,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        }))
+        
+        useAuthStore.setState({
+          user: {
+            id: result.user.id,
+            email: result.user.email,
+            name: result.user.name,
+            role: result.user.role
+          },
+          token: result.token
+        })
+        
+        toast.success('Giriş başarılı!')
+        navigate('/admin/dashboard')
+      } else {
+        toast.error(result.error || 'E-posta veya şifre hatalı')
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      toast.error('Bağlantı hatası. Lütfen tekrar deneyin.')
     }
   }
 
@@ -75,19 +94,19 @@ const AdminLogin = () => {
           transition={{ delay: 0.1 }}
           className="bg-white rounded-2xl shadow-2xl p-8"
         >
-          {/* Demo Credentials Alert */}
+          {/* Admin Login Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
               <div className="text-sm">
-                <p className="font-semibold text-blue-900 mb-1">Demo Giriş Bilgileri</p>
-                <p className="text-blue-700">E-posta: admin@restaurant.com</p>
-                <p className="text-blue-700">Şifre: admin123</p>
+                <p className="font-semibold text-blue-900 mb-1">Admin Giriş Bilgileri</p>
+                <p className="text-blue-700">E-posta: myusufyanik@gundogdugida.com</p>
+                <p className="text-blue-700">Şifre: 1q2w3e4r@</p>
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-5">
             {/* Email Input */}
             <div>
               <label className="label">E-posta Adresi</label>
