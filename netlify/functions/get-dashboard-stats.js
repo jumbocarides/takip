@@ -82,6 +82,14 @@ export async function handler(event, context) {
         p.position,
         p.department,
         p.is_active,
+        p.location_id,
+        p.monthly_salary,
+        p.daily_wage,
+        p.hourly_wage,
+        p.minute_wage,
+        p.standard_work_hours,
+        p.shift_start_time,
+        p.shift_end_time,
         l.name as location_name,
         l.location_code
        FROM personnel p

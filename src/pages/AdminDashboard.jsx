@@ -346,6 +346,15 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Lokasyon
                 </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aylık Maaş
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Günlük Ücret
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Vardiya
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Durum
                 </th>
@@ -357,13 +366,13 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : personnel.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
                     Henüz personel eklenmemiş
                   </td>
                 </tr>
@@ -394,6 +403,23 @@ const AdminDashboard = ({ section = 'dashboard' }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">{person.location_name || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <span className="text-sm font-bold text-green-700">
+                          {person.monthly_salary ? `${parseFloat(person.monthly_salary).toLocaleString('tr-TR')} ₺` : '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <span className="text-sm text-gray-900">
+                          {person.daily_wage ? `${parseFloat(person.daily_wage).toFixed(2)} ₺` : '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-xs text-gray-600">
+                          {person.shift_start_time && person.shift_end_time 
+                            ? `${person.shift_start_time.substring(0, 5)} - ${person.shift_end_time.substring(0, 5)}`
+                            : '-'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
