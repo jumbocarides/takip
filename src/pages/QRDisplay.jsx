@@ -101,136 +101,120 @@ const QRDisplay = () => {
   }, [])
 
   return (
-    <div className="min-h-screen gradient-bg flex items-center justify-center p-8">
-      <div className="w-full max-w-4xl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl">
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="text-center mb-6"
         >
-          <h1 className="text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
             Personel Giriş / Çıkış
           </h1>
-          <div className="flex items-center justify-center gap-6 text-white/90">
+          <div className="flex items-center justify-center gap-4 md:gap-6 text-white/90 text-sm md:text-base">
             <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              <span className="text-xl">{location.name}</span>
+              <MapPin className="w-4 h-4 md:w-5 md:h-5" />
+              <span>{location.name}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              <span className="text-xl">
-                {format(currentTime, 'HH:mm:ss', { locale: tr })}
+              <Clock className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="font-mono font-semibold">
+                {format(currentTime, 'HH:mm:ss')}
               </span>
             </div>
           </div>
         </motion.div>
 
-        {/* QR Code Card */}
+        {/* QR Code Card - Modern Minimalist */}
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-3xl shadow-2xl p-8"
+          className="bg-white rounded-3xl shadow-2xl p-8 md:p-12"
         >
           {/* Date Display */}
-          <div className="text-center mb-6">
-            <p className="text-2xl font-semibold text-gray-800">
+          <div className="text-center mb-8">
+            <p className="text-xl md:text-2xl font-semibold text-gray-800 capitalize">
               {format(currentTime, 'd MMMM yyyy EEEE', { locale: tr })}
             </p>
           </div>
 
-          {/* QR Code */}
-          <div className="relative flex justify-center mb-6">
+          {/* QR Code - Bigger & Centered */}
+          <div className="flex justify-center mb-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={qrCode}
-                initial={{ opacity: 0, scale: 0.8, rotate: -180 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.8, rotate: 180 }}
-                transition={{ duration: 0.5 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.4 }}
                 className="relative"
               >
-                <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl">
-                  {qrDataUrl && (
+                {/* QR Code Container */}
+                <div className="relative p-8 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-3xl shadow-lg">
+                  {qrDataUrl ? (
                     <img 
                       src={qrDataUrl} 
                       alt="QR Code" 
-                      className="w-80 h-80"
+                      className="w-72 h-72 md:w-96 md:h-96 rounded-2xl"
                     />
+                  ) : (
+                    <div className="w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
+                      <RefreshCw className="w-16 h-16 text-blue-400 animate-spin" />
+                    </div>
                   )}
                   
-                  {/* Countdown Overlay */}
-                  <div className="absolute -bottom-3 -right-3 bg-primary-600 text-white rounded-full w-16 h-16 flex items-center justify-center font-bold text-xl shadow-lg">
-                    {countdown}
+                  {/* Countdown Badge */}
+                  <div className="absolute -top-4 -right-4 bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-2xl px-5 py-3 shadow-xl">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold">{countdown}</div>
+                      <div className="text-xs opacity-90">saniye</div>
+                    </div>
                   </div>
                 </div>
               </motion.div>
             </AnimatePresence>
           </div>
 
-          {/* Refresh Timer Bar */}
+          {/* Progress Bar - Minimalist */}
           <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600 flex items-center gap-1">
-                <RefreshCw className="w-4 h-4" />
-                Otomatik Yenileme
-              </span>
-              <span className="text-sm text-gray-600">
-                {countdown} saniye
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
               <motion.div 
-                className="h-full bg-gradient-to-r from-primary-400 to-primary-600"
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
                 animate={{ width: `${(countdown / 90) * 100}%` }}
                 transition={{ duration: 1, ease: "linear" }}
               />
             </div>
+            <div className="flex items-center justify-center gap-2 mt-3 text-gray-500 text-sm">
+              <RefreshCw className="w-4 h-4" />
+              <span>Otomatik Yenileme</span>
+            </div>
           </div>
 
-          {/* Instructions */}
-          <div className="bg-gray-50 rounded-xl p-6">
-            <h3 className="font-semibold text-lg mb-3 text-gray-800">
-              Kullanım Talimatları
-            </h3>
-            <ol className="space-y-2 text-gray-600">
-              <li className="flex items-start">
-                <span className="font-semibold mr-2">1.</span>
-                Telefonunuzda personel uygulamasını açın
-              </li>
-              <li className="flex items-start">
-                <span className="font-semibold mr-2">2.</span>
-                QR okuyucuyu bu koda yöneltin
-              </li>
-              <li className="flex items-start">
-                <span className="font-semibold mr-2">3.</span>
-                Giriş veya çıkış işleminiz otomatik kaydedilecek
-              </li>
-            </ol>
-          </div>
-
-          {/* Status Indicator */}
-          <div className="mt-6 flex items-center justify-center">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-              isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          {/* Status Badge */}
+          <div className="flex items-center justify-center">
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+              isOnline 
+                ? 'bg-green-50 text-green-700 border-2 border-green-200' 
+                : 'bg-red-50 text-red-700 border-2 border-red-200'
             }`}>
               <Wifi className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
+              <span className="text-sm font-semibold">
+                {isOnline ? 'Çevrimiçi' : 'Bağlantı Yok'}
               </span>
             </div>
           </div>
         </motion.div>
 
-        {/* Footer */}
+        {/* Footer - 2025 */}
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center mt-8 text-white/80"
+          transition={{ delay: 0.3 }}
+          className="text-center mt-6 text-white/70"
         >
           <p className="text-sm">
-            © 2024 Restoran Personel Takip Sistemi • v1.0.0
+            © 2025 Personel Takip Sistemi
           </p>
         </motion.div>
       </div>
