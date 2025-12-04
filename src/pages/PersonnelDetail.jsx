@@ -5,7 +5,7 @@ import {
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, 
   DollarSign, Clock, TrendingUp, Briefcase, Activity,
   CheckCircle, XCircle, AlertCircle, Edit3, Plus, Minus,
-  Check, X, FileText, AlertTriangle
+  Check, X, FileText, AlertTriangle, Trash2, CalendarOff
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -23,10 +23,27 @@ const PersonnelDetail = () => {
   const [adjustmentAmount, setAdjustmentAmount] = useState('')
   const [adjustmentReason, setAdjustmentReason] = useState('')
   const [processingAdjustment, setProcessingAdjustment] = useState(false)
+  const [leaves, setLeaves] = useState([])
+  const [absences, setAbsences] = useState([])
+  const [showLeaveModal, setShowLeaveModal] = useState(false)
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false)
+  const [leaveType, setLeaveType] = useState('annual')
+  const [leaveStartDate, setLeaveStartDate] = useState('')
+  const [leaveEndDate, setLeaveEndDate] = useState('')
+  const [leaveReason, setLeaveReason] = useState('')
+  const [absenceDate, setAbsenceDate] = useState('')
+  const [absenceType, setAbsenceType] = useState('no_show')
+  const [absenceIsExcused, setAbsenceIsExcused] = useState(false)
+  const [absencePenalty, setAbsencePenalty] = useState('')
+  const [absenceReason, setAbsenceReason] = useState('')
+  const [processingLeave, setProcessingLeave] = useState(false)
+  const [processingAbsence, setProcessingAbsence] = useState(false)
 
   useEffect(() => {
     fetchPersonnelDetail()
     fetchAdjustments()
+    fetchLeaves()
+    fetchAbsences()
   }, [id])
 
   const fetchPersonnelDetail = async () => {
@@ -107,6 +124,175 @@ const PersonnelDetail = () => {
       toast.error('Bir hata oluştu')
     } finally {
       setProcessingAdjustment(false)
+    }
+  }
+
+  const fetchLeaves = async () => {
+    try {
+      const response = await fetch(`/.netlify/functions/leave-management?personnelId=${id}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setLeaves(result.leaves || [])
+      }
+    } catch (error) {
+      console.error('Leaves fetch error:', error)
+    }
+  }
+
+  const fetchAbsences = async () => {
+    try {
+      const response = await fetch(`/.netlify/functions/absence-management?personnelId=${id}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setAbsences(result.absences || [])
+      }
+    } catch (error) {
+      console.error('Absences fetch error:', error)
+    }
+  }
+
+  const handleLeaveSubmit = async () => {
+    if (!leaveStartDate || !leaveEndDate || !leaveReason) {
+      toast.error('Tüm alanlar gerekli')
+      return
+    }
+
+    setProcessingLeave(true)
+    try {
+      const response = await fetch('/.netlify/functions/leave-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personnelId: id,
+          leaveType: leaveType,
+          startDate: leaveStartDate,
+          endDate: leaveEndDate,
+          reason: leaveReason,
+          approvedBy: localStorage.getItem('userId')
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(result.message)
+        setShowLeaveModal(false)
+        setLeaveStartDate('')
+        setLeaveEndDate('')
+        setLeaveReason('')
+        fetchLeaves()
+        fetchPersonnelDetail()
+      } else {
+        toast.error(result.error || 'İşlem başarısız')
+      }
+    } catch (error) {
+      console.error('Leave error:', error)
+      toast.error('Bir hata oluştu')
+    } finally {
+      setProcessingLeave(false)
+    }
+  }
+
+  const handleAbsenceSubmit = async () => {
+    if (!absenceDate || !absenceReason) {
+      toast.error('Tarih ve sebep gerekli')
+      return
+    }
+
+    setProcessingAbsence(true)
+    try {
+      const response = await fetch('/.netlify/functions/absence-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personnelId: id,
+          absenceDate: absenceDate,
+          absenceType: absenceType,
+          isExcused: absenceIsExcused,
+          penaltyAmount: absencePenalty ? parseFloat(absencePenalty) : undefined,
+          reason: absenceReason,
+          createdBy: localStorage.getItem('userId')
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(result.message)
+        setShowAbsenceModal(false)
+        setAbsenceDate('')
+        setAbsenceReason('')
+        setAbsencePenalty('')
+        fetchAbsences()
+      } else {
+        toast.error(result.error || 'İşlem başarısız')
+      }
+    } catch (error) {
+      console.error('Absence error:', error)
+      toast.error('Bir hata oluştu')
+    } finally {
+      setProcessingAbsence(false)
+    }
+  }
+
+  const handleDeleteLeave = async (leaveId) => {
+    if (!confirm('Bu izin kaydını silmek istediğinize emin misiniz? Günler geri eklenecektir.')) {
+      return
+    }
+
+    try {
+      const response = await fetch('/.netlify/functions/leave-management', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leaveId: leaveId,
+          deletedBy: localStorage.getItem('userId')
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(result.message)
+        fetchLeaves()
+        fetchPersonnelDetail()
+      } else {
+        toast.error(result.error || 'Silme başarısız')
+      }
+    } catch (error) {
+      console.error('Delete leave error:', error)
+      toast.error('Bir hata oluştu')
+    }
+  }
+
+  const handleDeleteAbsence = async (absenceId) => {
+    if (!confirm('Bu devamsızlık kaydını silmek istediğinize emin misiniz?')) {
+      return
+    }
+
+    try {
+      const response = await fetch('/.netlify/functions/absence-management', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          absenceId: absenceId,
+          deletedBy: localStorage.getItem('userId')
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(result.message)
+        fetchAbsences()
+      } else {
+        toast.error(result.error || 'Silme başarısız')
+      }
+    } catch (error) {
+      console.error('Delete absence error:', error)
+      toast.error('Bir hata oluştu')
     }
   }
 
@@ -408,6 +594,127 @@ const PersonnelDetail = () => {
               )}
             </div>
 
+            {/* İzin Yönetimi */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Calendar className="w-6 h-6 text-blue-600" />
+                  İzin Kayıtları
+                </h3>
+                <button
+                  onClick={() => setShowLeaveModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  İzin Ekle
+                </button>
+              </div>
+
+              {leaves.length > 0 ? (
+                <div className="space-y-3">
+                  {leaves.slice(0, 5).map((leave) => (
+                    <div key={leave.id} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Calendar className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium text-gray-900 capitalize">
+                            {leave.leave_type === 'annual' ? 'Yıllık İzin' : 
+                             leave.leave_type === 'sick' ? 'Hastalık İzni' : 
+                             leave.leave_type === 'unpaid' ? 'Ücretsiz İzin' : 
+                             leave.leave_type === 'excuse' ? 'Mazeret İzni' :
+                             leave.leave_type === 'maternity' ? 'Doğum İzni' : 'Diğer İzin'}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">
+                            {leave.total_days} Gün
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">{leave.reason}</p>
+                        <p className="text-xs text-gray-500">
+                          {leave.start_date && format(new Date(leave.start_date), 'dd MMM', { locale: tr })} - {leave.end_date && format(new Date(leave.end_date), 'dd MMM yyyy', { locale: tr })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteLeave(leave.id)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Henüz izin kaydı yok
+                </div>
+              )}
+            </div>
+
+            {/* Devamsızlık Yönetimi */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <CalendarOff className="w-6 h-6 text-red-600" />
+                  Devamsızlık Kayıtları
+                </h3>
+                <button
+                  onClick={() => setShowAbsenceModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Devamsızlık Ekle
+                </button>
+              </div>
+
+              {absences.length > 0 ? (
+                <div className="space-y-3">
+                  {absences.slice(0, 5).map((absence) => (
+                    <div key={absence.id} className={`flex items-center justify-between p-4 rounded-lg border-l-4 ${
+                      absence.is_excused ? 'bg-yellow-50 border-yellow-500' : 'bg-red-50 border-red-500'
+                    }`}>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CalendarOff className={`w-4 h-4 ${absence.is_excused ? 'text-yellow-600' : 'text-red-600'}`} />
+                          <span className="font-medium text-gray-900">
+                            {absence.absence_type === 'no_show' ? 'Gelmedi' : 
+                             absence.absence_type === 'late' ? 'Geç Geldi' : 
+                             absence.absence_type === 'early_leave' ? 'Erken Ayrıldı' : 'Yetkisiz'}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            absence.is_excused ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {absence.is_excused ? 'Mazeretli' : 'Mazeretsiz'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">{absence.reason}</p>
+                        <p className="text-xs text-gray-500">
+                          {absence.absence_date && format(new Date(absence.absence_date), 'dd MMMM yyyy', { locale: tr })}
+                        </p>
+                      </div>
+                      <div className="text-right flex items-center gap-3">
+                        {parseFloat(absence.penalty_amount) > 0 && (
+                          <p className="text-lg font-bold text-red-600">
+                            -{Number(absence.penalty_amount).toFixed(2)} ₺
+                          </p>
+                        )}
+                        <button
+                          onClick={() => handleDeleteAbsence(absence.id)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          title="Sil"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Henüz devamsızlık kaydı yok
+                </div>
+              )}
+            </div>
+
             {/* Son Aktiviteler */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6">Son Aktiviteler</h3>
@@ -605,6 +912,267 @@ const PersonnelDetail = () => {
                       <>
                         <Check className="w-5 h-5" />
                         Onayla ve Uygula
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* İzin Modal */}
+        {showLeaveModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">İzin Ekle</h3>
+                <button
+                  onClick={() => setShowLeaveModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* İzin Tipi */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    İzin Tipi
+                  </label>
+                  <select
+                    value={leaveType}
+                    onChange={(e) => setLeaveType(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="annual">Yıllık İzin</option>
+                    <option value="sick">Hastalık İzni</option>
+                    <option value="unpaid">Ücretsiz İzin</option>
+                    <option value="excuse">Mazeret İzni</option>
+                    <option value="maternity">Doğum İzni</option>
+                    <option value="other">Diğer</option>
+                  </select>
+                </div>
+
+                {/* Başlangıç Tarihi */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Başlangıç Tarihi
+                  </label>
+                  <input
+                    type="date"
+                    value={leaveStartDate}
+                    onChange={(e) => setLeaveStartDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Bitiş Tarihi */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bitiş Tarihi
+                  </label>
+                  <input
+                    type="date"
+                    value={leaveEndDate}
+                    onChange={(e) => setLeaveEndDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Sebep */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sebep / Açıklama
+                  </label>
+                  <textarea
+                    value={leaveReason}
+                    onChange={(e) => setLeaveReason(e.target.value)}
+                    placeholder="İzin sebebini yazın..."
+                    rows="3"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                {/* Butonlar */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowLeaveModal(false)}
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    disabled={processingLeave}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={handleLeaveSubmit}
+                    disabled={processingLeave || !leaveStartDate || !leaveEndDate || !leaveReason}
+                    className={`flex-1 px-4 py-3 rounded-lg font-medium text-white transition-colors flex items-center justify-center gap-2 ${
+                      processingLeave || !leaveStartDate || !leaveEndDate || !leaveReason
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                  >
+                    {processingLeave ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        İşleniyor...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-5 h-5" />
+                        İzin Ekle
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Devamsızlık Modal */}
+        {showAbsenceModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Devamsızlık Ekle</h3>
+                <button
+                  onClick={() => setShowAbsenceModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Tarih */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Devamsızlık Tarihi
+                  </label>
+                  <input
+                    type="date"
+                    value={absenceDate}
+                    onChange={(e) => setAbsenceDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Devamsızlık Tipi */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Devamsızlık Tipi
+                  </label>
+                  <select
+                    value={absenceType}
+                    onChange={(e) => setAbsenceType(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="no_show">İşe Gelmedi</option>
+                    <option value="late">Geç Geldi</option>
+                    <option value="early_leave">Erken Ayrıldı</option>
+                    <option value="unauthorized">Yetkisiz Ayrılma</option>
+                  </select>
+                </div>
+
+                {/* Mazeretli mi? */}
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={absenceIsExcused}
+                      onChange={(e) => setAbsenceIsExcused(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Mazeretli</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1 ml-6">
+                    Mazeretli ise ceza uygulanmaz
+                  </p>
+                </div>
+
+                {/* Ceza Tutarı */}
+                {!absenceIsExcused && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ceza Tutarı (₺) - Opsiyonel
+                    </label>
+                    <input
+                      type="number"
+                      value={absencePenalty}
+                      onChange={(e) => setAbsencePenalty(e.target.value)}
+                      placeholder="Otomatik hesaplanacak"
+                      step="0.01"
+                      min="0"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Boş bırakılırsa günlük ücret kesintisi uygulanır
+                    </p>
+                  </div>
+                )}
+
+                {/* Sebep */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sebep / Açıklama
+                  </label>
+                  <textarea
+                    value={absenceReason}
+                    onChange={(e) => setAbsenceReason(e.target.value)}
+                    placeholder="Devamsızlık sebebini yazın..."
+                    rows="3"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                {/* Uyarı */}
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-red-800">
+                      <p className="font-medium mb-1">Dikkat!</p>
+                      <p>Bu devamsızlık kaydı oluşturulacak {!absenceIsExcused && 've ücret kesintisi yapılacaktır'}.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Butonlar */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowAbsenceModal(false)}
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    disabled={processingAbsence}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={handleAbsenceSubmit}
+                    disabled={processingAbsence || !absenceDate || !absenceReason}
+                    className={`flex-1 px-4 py-3 rounded-lg font-medium text-white transition-colors flex items-center justify-center gap-2 ${
+                      processingAbsence || !absenceDate || !absenceReason
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
+                  >
+                    {processingAbsence ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        İşleniyor...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Kaydet
                       </>
                     )}
                   </button>
