@@ -100,20 +100,31 @@ export async function handler(event, context) {
         const checkInTime = new Date(attendance.check_in_time)
         workHours = (checkOutTime - checkInTime) / (1000 * 60 * 60)
         
-        // Update attendance - Trigger otomatik hesaplama yapacak
+        // Get personnel hourly wage
+        const personnelQuery = await client.query(
+          'SELECT hourly_wage, daily_wage FROM personnel WHERE id = $1',
+          [personnelId]
+        )
+        
+        const hourlyWage = personnelQuery.rows[0]?.hourly_wage || 0
+        const netEarnings = workHours * hourlyWage
+        
+        // Update attendance with calculations
         const updateQuery = await client.query(
           `UPDATE attendance 
            SET 
              check_out_time = NOW(), 
              check_out_method = 'qr',
-             device_id = $1,
-             device_name = $2,
-             qr_token = $3,
+             work_hours = $1,
+             net_earnings = $2,
+             device_id = $3,
+             device_name = $4,
+             qr_token = $5,
              is_qr_verified = true,
              updated_at = NOW()
-           WHERE id = $4
+           WHERE id = $6
            RETURNING *`,
-          [deviceId, deviceName, qrCode, attendance.id]
+          [workHours, netEarnings, deviceId, deviceName, qrCode, attendance.id]
         )
         
         attendanceRecord = updateQuery.rows[0]
