@@ -42,8 +42,8 @@ exports.handler = async (event) => {
         per.name || ' ' || per.surname as personnel_name,
         per.personnel_no,
         l.name as location_name,
-        p.period_year,
-        p.period_month,
+        p.year,
+        p.month,
         p.period_start,
         p.period_end,
         p.total_work_days,
@@ -74,13 +74,13 @@ exports.handler = async (event) => {
     let paramCount = 1
 
     if (periodYear) {
-      query += ` AND p.period_year = $${paramCount}`
+      query += ` AND p.year = $${paramCount}`
       params.push(parseInt(periodYear))
       paramCount++
     }
 
     if (periodMonth) {
-      query += ` AND p.period_month = $${paramCount}`
+      query += ` AND p.month = $${paramCount}`
       params.push(parseInt(periodMonth))
       paramCount++
     }
@@ -97,7 +97,7 @@ exports.handler = async (event) => {
       paramCount++
     }
 
-    query += ' ORDER BY p.period_year DESC, p.period_month DESC, per.name'
+    query += ' ORDER BY p.year DESC, p.month DESC, per.name'
 
     const result = await client.query(query, params)
 

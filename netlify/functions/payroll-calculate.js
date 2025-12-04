@@ -220,10 +220,10 @@ exports.handler = async (event) => {
       penaltyDeduction: penaltyAmount
     }, taxRates)
 
-    // Bordro kaydı oluştur veya güncelle
+    // Mevcut kayıt var mı kontrol et
     const existingPayroll = await client.query(
       `SELECT id FROM payroll 
-       WHERE personnel_id = $1 AND period_year = $2 AND period_month = $3`,
+       WHERE personnel_id = $1 AND year = $2 AND month = $3`,
       [personnelId, periodYear, periodMonth]
     )
 
@@ -277,7 +277,7 @@ exports.handler = async (event) => {
       // Yeni kayıt
       const insertResult = await client.query(
         `INSERT INTO payroll (
-          personnel_id, location_id, period_year, period_month,
+          personnel_id, location_id, year, month,
           period_start, period_end, total_work_days, actual_work_days,
           absent_days, leave_days, total_work_hours, overtime_hours,
           base_salary, overtime_pay, gross_salary,
