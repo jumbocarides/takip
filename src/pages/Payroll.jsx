@@ -468,7 +468,7 @@ const Payroll = () => {
                         </td>
                         <td className="px-6 py-4">
                           <p className="text-sm text-gray-900">
-                            {payroll.period_month}/{payroll.period_year}
+                            {payroll.month}/{payroll.year}
                           </p>
                           <p className="text-xs text-gray-500">{payroll.actual_work_days} / {payroll.total_work_days} gün</p>
                         </td>
@@ -682,7 +682,7 @@ const Payroll = () => {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Dönem</p>
-                      <p className="font-medium">{selectedPayroll.period_month}/{selectedPayroll.period_year}</p>
+                      <p className="font-medium">{selectedPayroll.month}/{selectedPayroll.year}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Lokasyon</p>
