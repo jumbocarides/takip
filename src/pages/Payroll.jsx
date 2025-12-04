@@ -10,9 +10,11 @@ import {
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
+import { useAuthStore } from '../stores/authStore'
 
 const Payroll = () => {
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   
   // States
   const [loading, setLoading] = useState(true)
@@ -100,7 +102,7 @@ const Payroll = () => {
           personnelId: calculatePersonnelId,
           periodYear: selectedYear,
           periodMonth: selectedMonth,
-          calculatedBy: localStorage.getItem('userId'),
+          calculatedBy: user?.id || localStorage.getItem('userId'),
           autoApprove: false
         })
       })
@@ -135,7 +137,7 @@ const Payroll = () => {
         body: JSON.stringify({
           payrollId: payrollId,
           action: 'approve',
-          approvedBy: localStorage.getItem('userId')
+          approvedBy: user?.id || localStorage.getItem('userId')
         })
       })
 
@@ -165,7 +167,7 @@ const Payroll = () => {
         body: JSON.stringify({
           payrollId: payrollId,
           action: 'pay',
-          approvedBy: localStorage.getItem('userId'),
+          approvedBy: user?.id || localStorage.getItem('userId'),
           paymentDate: new Date().toISOString(),
           paymentMethod: 'bank_transfer'
         })
